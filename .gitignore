@@ -1,0 +1,32 @@
+# Paper PDFs (never version-controlled)
+data/papers/
+
+# Private metadata and annotations
+data/private/
+
+# User config
+data/config.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# Virtual environments
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude Code
+.claude/
