@@ -1,0 +1,28 @@
+{
+  "id": "rl-in-alphazero",
+  "title": "Reinforcement Learning in AlphaZero",
+  "authors": [
+    "Kevin Fu"
+  ],
+  "year": 2019,
+  "source": null,
+  "tags": [
+    "reinforcement learning",
+    "alphazero",
+    "monte carlo tree search",
+    "neural networks",
+    "game playing"
+  ],
+  "topics": [],
+  "summary": "This paper explains DeepMind's AlphaZero algorithm, which achieved superhuman performance in games like Go by combining Monte Carlo Tree Search (MCTS) with deep neural networks trained through self-play. The key innovation is using a single neural network to learn both policy and value functions by training on data generated from games where an MCTS-guided AI plays against itself, with the MCTS providing more accurate move probabilities and game outcomes than the neural network alone. This approach eliminates the need for human expert game data and allows the system to learn optimal play strategies from scratch through iterative self-improvement.",
+  "notes": null,
+  "private": false,
+  "added": "2026-02-26",
+  "pdf_filename": "rl-in-alphazero.pdf",
+  "url": null,
+  "arxiv_id": null,
+  "doi": null,
+  "import_source": "local",
+  "original_filename": "RL_in_AlphaZero.pdf",
+  "pdf_hash": "ef765e5e00566841b112a446eddd7d099017579f5b171d508e61079755c155ac"
+}

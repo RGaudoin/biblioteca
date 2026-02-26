@@ -1,0 +1,28 @@
+{
+  "id": "molak-2021-modeling-uncertainty-neural-networks-3",
+  "title": "Modeling uncertainty in neural networks with TensorFlow Probability: Part 1: An introduction",
+  "authors": [
+    "Aleksander Molak"
+  ],
+  "year": 2021,
+  "source": "Towards Data Science",
+  "tags": [
+    "uncertainty estimation",
+    "tensorflow probability",
+    "neural networks",
+    "probabilistic programming",
+    "epistemic uncertainty"
+  ],
+  "topics": [],
+  "summary": "This tutorial introduces uncertainty modeling in neural networks using the TensorFlow Probability library. Using a medical diagnosis system example, it demonstrates why quantifying model uncertainty is crucial and shows how epistemic uncertainty can reveal when predictions lack confidence despite high softmax scores. The series covers key TensorFlow Probability modules (tfp.distributions and tfp.layers) with practical examples of probabilistic modeling approaches.",
+  "notes": null,
+  "private": false,
+  "added": "2026-02-26",
+  "pdf_filename": "molak-2021-modeling-uncertainty-neural-networks-3.pdf",
+  "url": null,
+  "arxiv_id": null,
+  "doi": null,
+  "import_source": "local",
+  "original_filename": "td_TF_prob_1.pdf",
+  "pdf_hash": "dc0e5f93b7389b386c04b5d5978fd0307088b02ec72fc97394c1cea829d5de09"
+}

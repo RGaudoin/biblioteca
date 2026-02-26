@@ -133,10 +133,13 @@ Paper text:
             extracted = json.loads(json_match.group())
             # Merge with PDF metadata (Claude takes priority)
             result = {**pdf_meta, **{k: v for k, v in extracted.items() if v is not None}}
+            if result.get("summary"):
+                result["summary_model"] = model
             return result
 
-    except Exception:
-        pass
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
 
     return pdf_meta
 
@@ -171,7 +174,7 @@ def summarise_paper(pdf_path, config=None, style="brief"):
     except ImportError:
         return None
 
-    model = config.get("summary_model", "claude-sonnet-4-6-20250514")
+    model = config.get("summary_model", "claude-sonnet-4-20250514")
 
     if style == "brief":
         instruction = "Summarise this paper in 2-3 concise sentences."
@@ -197,7 +200,114 @@ Paper text:
             response.usage.output_tokens,
         )
 
-        return response.content[0].text.strip()
+        return {"summary": response.content[0].text.strip(), "model": model}
 
-    except Exception:
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
         return None
+
+
+def parse_reading_list(text, paper_list, config=None):
+    """Parse a reading list / notes file into a structured collection using Claude.
+
+    Args:
+        text: The file content as a string.
+        paper_list: List of dicts with 'id' and 'title' for existing papers.
+        config: Config dict (loaded if None).
+
+    Returns dict with collection structure, or None on failure.
+    """
+    if config is None:
+        config = load_config()
+
+    api_key = get_api_key(config)
+    if not api_key:
+        return None
+
+    try:
+        import anthropic
+    except ImportError:
+        return None
+
+    model = config.get("extraction_model", "claude-haiku-4-5-20251001")
+
+    # Build the paper list for the prompt
+    papers_str = "\n".join(
+        f"  {p['id']}: {p.get('title') or '(untitled)'}"
+        for p in paper_list
+    )
+
+    # Truncate text if very long
+    if len(text) > 30000:
+        text = text[:30000] + "\n[... truncated ...]"
+
+    prompt = f"""Parse this reading list / notes file into a structured collection.
+
+Existing papers in the library:
+{papers_str}
+
+Return ONLY valid JSON with this structure:
+{{
+  "title": "suggested collection title",
+  "description": "brief description of the collection",
+  "sections": [
+    {{
+      "title": "Section Name",
+      "notes": "section-level notes if any, null if none",
+      "papers": [
+        {{
+          "ref": "original reference text from the file",
+          "matched_id": "existing-paper-id or null if no match",
+          "suggested_title": "descriptive title for unmatched references",
+          "url": "url if available, null otherwise",
+          "notes": "all notes/comments about this reference from the file"
+        }}
+      ],
+      "external_links": [
+        {{
+          "url": "https://...",
+          "title": "link title or description",
+          "notes": "notes about this link from the file"
+        }}
+      ]
+    }}
+  ]
+}}
+
+Rules:
+- Match references to existing paper IDs where possible. The file may use original filenames (e.g. MCTS_loops), abbreviations, or partial titles. Be flexible with matching.
+- If a reference cannot be matched, set matched_id to null and provide a suggested_title.
+- Group into sections based on the document's own structure (headings, topic groupings, clear divisions).
+- Preserve ALL notes, comments, and annotations from the original text. Include indented sub-points as part of the notes.
+- External URLs (blogs, forums, documentation, Stack Exchange, etc.) go in external_links with their surrounding notes.
+- Paper references (local files, academic papers) go in the papers list.
+- If the document has general comments not tied to a specific reference, include them in the section notes.
+
+File content:
+{text}"""
+
+    try:
+        client = anthropic.Anthropic(api_key=api_key)
+        response = client.messages.create(
+            model=model,
+            max_tokens=4096,
+            messages=[{"role": "user", "content": prompt}],
+        )
+
+        _track_usage(
+            config,
+            response.usage.input_tokens,
+            response.usage.output_tokens,
+        )
+
+        response_text = response.content[0].text
+        json_match = re.search(r"\{[\s\S]*\}", response_text)
+        if json_match:
+            return json.loads(json_match.group())
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+
+    return None

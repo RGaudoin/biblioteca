@@ -28,6 +28,7 @@
                 <select id="topic-filter" onchange="refreshLibrary()">
                     <option value="">All topics</option>
                 </select>
+                <button id="bulk-extract-btn" onclick="bulkExtract()" style="display:none">Extract Missing Metadata (AI)</button>
                 <span id="paper-count" class="count-badge"></span>
             </div>
             <div id="paper-list" class="paper-list"></div>
@@ -51,6 +52,8 @@
                 <button class="tab-btn" onclick="showTab('import', 'tab-url')">URL</button>
                 <button class="tab-btn" onclick="showTab('import', 'tab-arxiv')">arXiv</button>
                 <button class="tab-btn" onclick="showTab('import', 'tab-batch')">Batch</button>
+                <button class="tab-btn" onclick="showTab('import', 'tab-links')">Links File</button>
+                <button class="tab-btn" onclick="showTab('import', 'tab-reading-list')">Reading List</button>
                 <button class="tab-btn" onclick="showTab('import', 'tab-emails')">Emails</button>
             </div>
 
@@ -86,13 +89,42 @@
 
             <div id="tab-batch" class="tab-content">
                 <h3>Batch Import</h3>
-                <p>Import all PDFs from a folder on disk.</p>
-                <form onsubmit="return handleBatchImport(event)">
+                <p>Import all PDFs from a folder on disk. Scan first to preview and skip duplicates.</p>
+                <form onsubmit="return handleBatchScan(event)">
                     <input type="text" id="batch-folder" placeholder="/home/user/Documents/papers/" required>
+                    <label><input type="checkbox" id="batch-recursive"> Include subdirectories</label>
                     <label><input type="checkbox" id="batch-ai"> Use AI for metadata extraction</label>
-                    <button type="submit">Import Folder</button>
+                    <div style="display:flex; gap:0.5rem">
+                        <button type="submit">Scan Folder</button>
+                        <button type="button" onclick="handleBatchImportAll()">Import All New</button>
+                    </div>
                 </form>
+                <div id="batch-scan-results"></div>
                 <div id="batch-result" class="result-box"></div>
+            </div>
+
+            <div id="tab-links" class="tab-content">
+                <h3>Import from Links File</h3>
+                <p>Paste URLs or arXiv IDs, one per line. Lines starting with # are comments.</p>
+                <form onsubmit="return handleLinksImport(event)">
+                    <textarea id="links-text" rows="10" placeholder="2402.02160
+https://arxiv.org/abs/2301.01234
+https://example.com/paper.pdf
+# This is a comment"></textarea>
+                    <button type="submit">Import Links</button>
+                </form>
+                <div id="links-result" class="result-box"></div>
+            </div>
+
+            <div id="tab-reading-list" class="tab-content">
+                <h3>Import Reading List</h3>
+                <p>Parse a reading list or notes file (.md, .txt, .pdf) into a collection using AI.
+                    References are matched to existing papers; unmatched ones become stubs.</p>
+                <form onsubmit="return handleReadingListImport(event)">
+                    <input type="text" id="reading-list-path" placeholder="/home/user/Downloads/reading-list.md" required>
+                    <button type="submit">Parse &amp; Import</button>
+                </form>
+                <div id="reading-list-result" class="result-box"></div>
             </div>
 
             <div id="tab-emails" class="tab-content">
@@ -134,7 +166,7 @@
                     <input type="text" id="extraction-model" placeholder="claude-haiku-4-5-20251001">
                 </label>
                 <label>Summary model:
-                    <input type="text" id="summary-model" placeholder="claude-sonnet-4-6-20250514">
+                    <input type="text" id="summary-model" placeholder="claude-sonnet-4-20250514">
                 </label>
                 <button onclick="saveModels()">Save Models</button>
             </div>

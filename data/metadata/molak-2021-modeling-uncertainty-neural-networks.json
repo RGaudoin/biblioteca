@@ -1,0 +1,28 @@
+{
+  "id": "molak-2021-modeling-uncertainty-neural-networks",
+  "title": "Modeling uncertainty in neural networks with TensorFlow Probability: Part 4: Going fully probabilistic",
+  "authors": [
+    "Aleksander Molak"
+  ],
+  "year": 2021,
+  "source": "Towards Data Science",
+  "tags": [
+    "uncertainty quantification",
+    "tensorflow probability",
+    "bayesian neural networks",
+    "aleatoric uncertainty",
+    "epistemic uncertainty"
+  ],
+  "topics": [],
+  "summary": "This tutorial demonstrates how to model both aleatoric and epistemic uncertainty in neural networks using TensorFlow Probability by combining variational layers and distribution layers. The paper walks through a hands-on example of building a probabilistic model for non-linear heteroscedastic data using variational inference techniques with prior and posterior distributions.",
+  "notes": null,
+  "private": false,
+  "added": "2026-02-26",
+  "pdf_filename": "molak-2021-modeling-uncertainty-neural-networks.pdf",
+  "url": null,
+  "arxiv_id": null,
+  "doi": null,
+  "import_source": "local",
+  "original_filename": "Modeling uncertainty in neural networks with TensorFlow Probability | by Aleksander Molak | Nov, 2021 | Towards Data Science.pdf",
+  "pdf_hash": "73d72c54a1fef898af82a1da1d4ee903f27dba65e9c5149e9ee2e83f3dad8318"
+}

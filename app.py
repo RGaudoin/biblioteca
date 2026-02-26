@@ -191,6 +191,22 @@ def api_import_arxiv():
     return jsonify(result), 400
 
 
+@app.route("/api/import/batch/scan", methods=["POST"])
+def api_scan_batch():
+    """Scan a folder for PDFs and check for duplicates (does NOT import)."""
+    data = request.json or {}
+    folder = data.get("folder", "").strip()
+    if not folder:
+        return jsonify({"success": False, "error": "Folder path is required"}), 400
+
+    recursive = data.get("recursive", False)
+
+    from importers import scan_batch
+    results = scan_batch(folder, recursive=recursive)
+
+    return jsonify({"success": True, "files": results})
+
+
 @app.route("/api/import/batch", methods=["POST"])
 def api_import_batch():
     data = request.json or {}
@@ -200,13 +216,42 @@ def api_import_batch():
 
     from importers import import_batch
     use_ai = data.get("ai", False)
-    results = import_batch(folder, use_ai=use_ai)
+    recursive = data.get("recursive", False)
+    paths = data.get("paths")  # Optional: only import specific files
+    results = import_batch(folder, use_ai=use_ai, recursive=recursive, paths=paths)
 
     return jsonify({
         "success": True,
         "imported": results["imported"],
         "skipped": results["skipped"],
         "failed": results["failed"],
+    })
+
+
+@app.route("/api/import/links", methods=["POST"])
+def api_import_links():
+    """Import from a text block of URLs/arxiv IDs, one per line."""
+    data = request.json or {}
+    text = data.get("text", "").strip()
+    if not text:
+        return jsonify({"success": False, "error": "Text is required"}), 400
+
+    # Write to temp file and use the links importer
+    import tempfile
+    from pathlib import Path
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as tmp:
+        tmp.write(text)
+        tmp_path = tmp.name
+
+    from importers import import_links_file
+    results = import_links_file(tmp_path)
+    Path(tmp_path).unlink(missing_ok=True)
+
+    return jsonify({
+        "success": True,
+        "imported": results["imported"],
+        "failed": results["failed"],
+        "skipped": results.get("skipped", []),
     })
 
 
@@ -226,6 +271,32 @@ def api_import_emails():
         "imported": results["imported"],
         "failed": results["failed"],
     })
+
+
+@app.route("/api/import/reading-list", methods=["POST"])
+def api_import_reading_list():
+    """Parse a reading list / notes file into a collection using AI."""
+    data = request.json or {}
+    path = data.get("path", "").strip()
+    if not path:
+        return jsonify({"success": False, "error": "File path is required"}), 400
+
+    config = load_config()
+    if not get_api_key(config):
+        return jsonify({"success": False, "error": "No API key configured (needed for AI parsing)"}), 400
+
+    from importers import import_reading_list
+    result = import_reading_list(path)
+
+    if result["success"]:
+        return jsonify({
+            "success": True,
+            "collection_id": result["collection_id"],
+            "matched": result["matched"],
+            "stubs_created": result["stubs_created"],
+            "external_links": result["external_links"],
+        })
+    return jsonify(result), 400
 
 
 # --- Collections ---
@@ -282,6 +353,69 @@ def api_delete_collection(collection_id):
 
 # --- AI ---
 
+@app.route("/api/ai/bulk-extract", methods=["POST"])
+def api_ai_bulk_extract():
+    """Extract metadata for multiple papers that are missing titles."""
+    config = load_config()
+    if not get_api_key(config):
+        return jsonify({"success": False, "error": "No API key configured"}), 400
+
+    data = request.json or {}
+    paper_ids = data.get("paper_ids")  # Optional: specific paper IDs
+
+    if paper_ids:
+        papers = [load_paper(pid) for pid in paper_ids]
+        papers = [p for p in papers if p is not None]
+    else:
+        # Default: all papers missing a title
+        papers = [p for p in list_papers() if not p.get("title")]
+
+    if not papers:
+        return jsonify({"success": True, "processed": 0, "results": [],
+                        "message": "No papers need extraction"})
+
+    from ai import extract_metadata
+    results = []
+    for paper in papers:
+        if not paper.get("pdf_filename"):
+            results.append({"paper_id": paper["id"], "status": "skipped",
+                            "reason": "No PDF file"})
+            continue
+
+        pdf_path = PAPERS_DIR / paper["pdf_filename"]
+        if not pdf_path.exists():
+            results.append({"paper_id": paper["id"], "status": "skipped",
+                            "reason": "PDF not found on disk"})
+            continue
+
+        extracted = extract_metadata(str(pdf_path), config)
+        if not extracted:
+            results.append({"paper_id": paper["id"], "status": "failed",
+                            "reason": "Could not extract metadata"})
+            continue
+
+        updated = False
+        for field in ["title", "authors", "year", "source", "summary", "tags"]:
+            if extracted.get(field) and not paper.get(field):
+                paper[field] = extracted[field]
+                updated = True
+        if extracted.get("summary_model") and extracted.get("summary") == paper.get("summary"):
+            paper["summary_model"] = extracted["summary_model"]
+
+        if updated:
+            save_paper(paper)
+            results.append({"paper_id": paper["id"], "status": "updated",
+                            "title": paper.get("title")})
+        else:
+            results.append({"paper_id": paper["id"], "status": "unchanged"})
+
+    return jsonify({
+        "success": True,
+        "processed": len(results),
+        "results": results,
+    })
+
+
 @app.route("/api/ai/extract/<paper_id>", methods=["POST"])
 def api_ai_extract(paper_id):
     paper = load_paper(paper_id)
@@ -311,6 +445,9 @@ def api_ai_extract(paper_id):
         if extracted.get(field) and not paper.get(field):
             paper[field] = extracted[field]
             updated = True
+    # Track which model produced the summary
+    if extracted.get("summary_model") and extracted.get("summary") == paper.get("summary"):
+        paper["summary_model"] = extracted["summary_model"]
 
     if updated:
         save_paper(paper)
@@ -339,16 +476,17 @@ def api_ai_summarise(paper_id):
     style = data.get("style", "brief")
 
     from ai import summarise_paper
-    summary = summarise_paper(str(pdf_path), config, style=style)
+    result = summarise_paper(str(pdf_path), config, style=style)
 
-    if not summary:
+    if not result:
         return jsonify({"success": False, "error": "Could not generate summary"}), 400
 
-    # Save summary to paper
-    paper["summary"] = summary
+    # Save summary and model to paper
+    paper["summary"] = result["summary"]
+    paper["summary_model"] = result["model"]
     save_paper(paper)
 
-    return jsonify({"success": True, "paper": paper, "summary": summary})
+    return jsonify({"success": True, "paper": paper, "summary": result["summary"]})
 
 
 # --- Config ---

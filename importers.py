@@ -6,6 +6,7 @@ import hashlib
 import re
 import shutil
 import xml.etree.ElementTree as ET
+from datetime import date
 from pathlib import Path
 
 import requests
@@ -14,9 +15,13 @@ from papers import (
     PAPERS_DIR,
     create_paper_stub,
     find_by_arxiv_id,
+    find_by_hash,
     generate_id,
+    list_papers,
     load_config,
+    load_paper,
     normalise_filename,
+    save_collection,
 )
 
 
@@ -55,6 +60,13 @@ def import_local(pdf_path, metadata_overrides=None, use_ai=False):
     # Check for 0-byte files
     if pdf_path.stat().st_size == 0:
         return {"success": False, "error": f"Empty file (0 bytes): {pdf_path}"}
+
+    # Check for duplicates by hash
+    file_hash = compute_hash(str(pdf_path))
+    existing = find_by_hash(file_hash)
+    if existing:
+        return {"success": False, "error": f"Duplicate of existing paper: {existing['id']}",
+                "duplicate": True, "existing_id": existing["id"]}
 
     overrides = metadata_overrides or {}
 
@@ -417,12 +429,46 @@ def _import_generic_url(url):
 
 # --- Batch import ---
 
-def import_batch(folder_path, use_ai=False):
-    """Import all PDFs from a folder.
+def scan_batch(folder_path, recursive=False):
+    """Scan a folder for PDFs and check for duplicates. Does NOT import.
+
+    Returns list of dicts with 'path', 'filename', 'size', 'status', 'existing_id'.
+    Status is one of: 'new', 'duplicate', 'empty'.
+    """
+    folder = Path(folder_path)
+    if not folder.is_dir():
+        return []
+
+    pattern = "**/*.pdf" if recursive else "*.pdf"
+    results = []
+
+    for pdf_path in sorted(folder.glob(pattern)):
+        size = pdf_path.stat().st_size
+        if size == 0:
+            results.append({"path": str(pdf_path), "filename": pdf_path.name,
+                            "size": 0, "status": "empty", "existing_id": None})
+            continue
+
+        file_hash = compute_hash(str(pdf_path))
+        existing = find_by_hash(file_hash)
+        if existing:
+            results.append({"path": str(pdf_path), "filename": pdf_path.name,
+                            "size": size, "status": "duplicate", "existing_id": existing["id"]})
+        else:
+            results.append({"path": str(pdf_path), "filename": pdf_path.name,
+                            "size": size, "status": "new", "existing_id": None})
+
+    return results
+
+
+def import_batch(folder_path, use_ai=False, recursive=False, paths=None):
+    """Import PDFs from a folder.
 
     Args:
         folder_path: Path to folder containing PDFs.
         use_ai: If True, attempt AI metadata extraction for each.
+        recursive: If True, scan subdirectories too.
+        paths: If provided, only import these specific file paths (from scan_batch).
 
     Returns:
         dict with 'imported', 'skipped', 'failed' lists.
@@ -433,7 +479,13 @@ def import_batch(folder_path, use_ai=False):
 
     results = {"imported": [], "skipped": [], "failed": []}
 
-    for pdf_path in sorted(folder.glob("*.pdf")):
+    if paths is not None:
+        pdf_files = [Path(p) for p in paths]
+    else:
+        pattern = "**/*.pdf" if recursive else "*.pdf"
+        pdf_files = sorted(folder.glob(pattern))
+
+    for pdf_path in pdf_files:
         # Skip 0-byte files
         if pdf_path.stat().st_size == 0:
             results["skipped"].append({"path": str(pdf_path), "reason": "Empty file (0 bytes)"})
@@ -442,6 +494,8 @@ def import_batch(folder_path, use_ai=False):
         result = import_local(pdf_path, use_ai=use_ai)
         if result["success"]:
             results["imported"].append({"path": str(pdf_path), "paper_id": result["paper_id"]})
+        elif result.get("duplicate"):
+            results["skipped"].append({"path": str(pdf_path), "reason": f"Duplicate of {result['existing_id']}"})
         else:
             results["failed"].append({"path": str(pdf_path), "error": result["error"]})
 
@@ -498,3 +552,186 @@ def import_emails(text_or_path):
             results["failed"].append({"url": url, "error": result["error"]})
 
     return results
+
+
+# --- Link file import ---
+
+def import_links_file(file_path):
+    """Import papers from a text file containing URLs or arxiv IDs, one per line.
+
+    Lines starting with # are treated as comments. Blank lines are skipped.
+
+    Args:
+        file_path: Path to text file.
+
+    Returns:
+        dict with 'imported', 'failed', 'skipped' lists.
+    """
+    path = Path(file_path)
+    if not path.exists():
+        return {"imported": [], "failed": [{"line": file_path, "error": "File not found"}], "skipped": []}
+
+    with open(path, "r", encoding="utf-8") as f:
+        lines = f.readlines()
+
+    results = {"imported": [], "failed": [], "skipped": []}
+
+    for line in lines:
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+
+        # Detect arxiv ID (bare, no URL)
+        arxiv_match = ARXIV_ID_PATTERN.match(line)
+        if arxiv_match and "://" not in line:
+            result = import_arxiv(line)
+        elif "://" in line:
+            result = import_url(line)
+        else:
+            results["skipped"].append({"line": line, "reason": "Not a recognised URL or arxiv ID"})
+            continue
+
+        if result["success"]:
+            results["imported"].append({"line": line, "paper_id": result["paper_id"], "note": result.get("note")})
+        else:
+            results["failed"].append({"line": line, "error": result["error"]})
+
+    return results
+
+
+# --- Reading list import ---
+
+def import_reading_list(file_path):
+    """Import a reading list / notes file as a structured collection using AI.
+
+    Supports .md, .txt, and .pdf files. Uses Claude to parse the content,
+    match references to existing papers, and create stubs for unmatched ones.
+
+    Args:
+        file_path: Path to the reading list file.
+
+    Returns:
+        dict with 'success', 'collection_id', 'matched', 'stubs_created',
+        'external_links', 'error'.
+    """
+    from ai import parse_reading_list, _extract_text_from_pdf
+
+    path = Path(file_path)
+    if not path.exists():
+        return {"success": False, "error": f"File not found: {file_path}"}
+
+    # Read file content
+    suffix = path.suffix.lower()
+    if suffix == ".pdf":
+        text = _extract_text_from_pdf(str(path), max_pages=20)
+        if not text:
+            return {"success": False, "error": "Could not extract text from PDF"}
+    elif suffix in (".md", ".txt", ".text", ".markdown"):
+        with open(path, "r", encoding="utf-8") as f:
+            text = f.read()
+    else:
+        # Try reading as text
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                text = f.read()
+        except UnicodeDecodeError:
+            return {"success": False, "error": f"Cannot read file format: {suffix}"}
+
+    if not text or not text.strip():
+        return {"success": False, "error": "File is empty"}
+
+    # Get existing papers for matching
+    paper_list = [{"id": p["id"], "title": p.get("title")}
+                  for p in list_papers()]
+
+    config = load_config()
+
+    # Parse with AI
+    parsed = parse_reading_list(text, paper_list, config)
+    if not parsed:
+        return {"success": False, "error": "AI parsing failed"}
+
+    # Build the collection
+    from papers import _slugify, _collection_path
+    coll_title = parsed.get("title", path.stem)
+    coll_description = parsed.get("description")
+    coll_id = _slugify(coll_title) if coll_title else _slugify(path.stem)
+
+    # Ensure unique collection ID
+    base_id = coll_id
+    counter = 2
+    while _collection_path(coll_id).exists():
+        coll_id = f"{base_id}-{counter}"
+        counter += 1
+
+    matched = []
+    stubs_created = []
+    link_count = 0
+
+    sections = []
+    for section_data in parsed.get("sections", []):
+        section = {
+            "title": section_data.get("title", "Untitled"),
+            "notes": section_data.get("notes"),
+            "papers": [],
+            "external_links": section_data.get("external_links", []),
+        }
+        link_count += len(section["external_links"])
+
+        for paper_ref in section_data.get("papers", []):
+            matched_id = paper_ref.get("matched_id")
+            notes = paper_ref.get("notes")
+
+            if matched_id:
+                # Verify the paper actually exists
+                existing = load_paper(matched_id)
+                if existing:
+                    section["papers"].append({
+                        "paper_id": matched_id,
+                        "notes": notes,
+                    })
+                    matched.append(matched_id)
+                    continue
+
+            # Unmatched — create a stub paper
+            stub_title = paper_ref.get("suggested_title") or paper_ref.get("ref", "Unknown")
+            stub_url = paper_ref.get("url")
+            stub_id = generate_id(title=stub_title, fallback=paper_ref.get("ref", "stub"))
+
+            create_paper_stub(
+                stub_id,
+                pdf_filename=None,
+                title=stub_title,
+                url=stub_url,
+                notes=notes,
+                import_source="reading-list",
+            )
+
+            section["papers"].append({
+                "paper_id": stub_id,
+                "notes": notes,
+            })
+            stubs_created.append(stub_id)
+
+        sections.append(section)
+
+    # Create the collection
+    collection = {
+        "id": coll_id,
+        "title": coll_title,
+        "description": coll_description,
+        "created": date.today().isoformat(),
+        "updated": date.today().isoformat(),
+        "sections": sections,
+        "external_links": [],
+    }
+    save_collection(collection)
+
+    return {
+        "success": True,
+        "collection_id": coll_id,
+        "collection": collection,
+        "matched": matched,
+        "stubs_created": stubs_created,
+        "external_links": link_count,
+    }

@@ -1,0 +1,28 @@
+{
+  "id": "fung-2017-overview-resnet-its-variants",
+  "title": "An Overview of ResNet and its Variants",
+  "authors": [
+    "Vincent Fung"
+  ],
+  "year": 2017,
+  "source": "Towards Data Science (Medium)",
+  "tags": [
+    "resnet",
+    "deep learning",
+    "convolutional neural networks",
+    "residual networks",
+    "computer vision"
+  ],
+  "topics": [],
+  "summary": "This paper provides a comprehensive overview of ResNet and its architectural variants, beginning with background on the vanishing gradient problem and the innovation of identity shortcut connections that enable training of very deep networks. The author reviews the core ResNet architecture and recent variants such as ResNeXt, discussing how residual connections have revolutionized deep learning in computer vision applications including image classification, object detection, and face recognition.",
+  "notes": null,
+  "private": false,
+  "added": "2026-02-26",
+  "pdf_filename": "fung-2017-overview-resnet-its-variants.pdf",
+  "url": null,
+  "arxiv_id": null,
+  "doi": null,
+  "import_source": "local",
+  "original_filename": "An Overview of ResNet and its Variants | by Vincent Fung | Towards Data Science.pdf",
+  "pdf_hash": "8e5f65aeaf07fd233dd477677089bf81d91fd116449b12b5a0ad2d2528d29af0"
+}

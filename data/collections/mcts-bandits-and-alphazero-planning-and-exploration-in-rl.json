@@ -1,0 +1,202 @@
+{
+  "id": "mcts-bandits-and-alphazero-planning-and-exploration-in-rl",
+  "title": "MCTS, Bandits, and AlphaZero: Planning and Exploration in RL",
+  "description": "A comprehensive collection on Monte Carlo Tree Search, multi-armed bandits with UCB algorithms, and their application in AlphaZero-style reinforcement learning systems.",
+  "created": "2026-02-26",
+  "updated": "2026-02-26",
+  "sections": [
+    {
+      "title": "Monte Carlo Tree Search (MCTS)",
+      "notes": "Core MCTS theory and practical implementations, including generalizations to stochastic environments and graph structures.",
+      "papers": [
+        {
+          "paper_id": "mcts-loops",
+          "notes": "Interesting generalisation to loops (where nodes are visited several times in a rollout) and asymmetric trees. Sets unvisited child node count to infinity—similar to some GitHub implementations. This approach will at first always explore all child nodes once, but this becomes difficult if each node has many child nodes, as the number of nodes to explore explodes exponentially. Similar to standard UCB where all nodes are first explored once."
+        },
+        {
+          "paper_id": "mcts-stochastic",
+          "notes": "Generalisation to stochastic move outcomes using FrozenLake environment. Also links to related works."
+        },
+        {
+          "paper_id": "monte-carlo-tree-search",
+          "notes": "Interesting intro to UTC and PUCT. Extension to algorithm."
+        },
+        {
+          "paper_id": "glauben2022replacing",
+          "notes": "Thesis on adding planning model to PUCT. AlphaZero/AlphaGo focused. Intro to MCTS, UCT, PUCT and more."
+        }
+      ],
+      "external_links": [
+        {
+          "url": "https://drive.google.com/drive/u/1/folders/1YvHZpJ2ofSUXFNi1WCYzci-v9qItonUN",
+          "title": "MCTS++ - Stratos Team - Internal - Google Drive",
+          "notes": "Papers folder for MCTS++"
+        },
+        {
+          "url": "https://colab.research.google.com/github/yandexdataschool/Practical_RL/blob/master/week10_planning/seminar_MCTS.ipynb#scrollTo=6AhqWboSIohT",
+          "title": "seminar_MCTS.ipynb - Colab",
+          "notes": "Some code and intro. Covers initialisation of new child nodes."
+        },
+        {
+          "url": "https://ai.stackexchange.com/questions/22914/how-to-run-a-monte-carlo-tree-search-mcts-for-stochastic-environment",
+          "title": "How to run a Monte Carlo Tree Search MCTS for stochastic environment? - Artificial Intelligence Stack Exchange",
+          "notes": "Discusses the problem that we do not know what the next state is so the hierarchical tree-like expansion does not work. Even worse if continuous outcomes. Introduces the concept of open loop rather than closed loop."
+        },
+        {
+          "url": "https://ai.stackexchange.com/questions/13867/mcts-for-non-deterministic-games-with-very-high-branching-factor-for-chance-nodes/13919#13919",
+          "title": "MCTS for non-deterministic games with very high branching factor for chance nodes - Artificial Intelligence Stack Exchange",
+          "notes": "Related discussion on handling non-determinism in MCTS."
+        }
+      ]
+    },
+    {
+      "title": "Upper Confidence Bound (UCB) Algorithms",
+      "notes": "Theoretical foundations and practical applications of UCB for multi-armed bandits, contextual bandits, and neural network extensions.",
+      "papers": [
+        {
+          "paper_id": "ucb-note-new",
+          "notes": "Good explanation and derivation for (sub) Gaussian noise. Includes proof of regret bound."
+        },
+        {
+          "paper_id": "ucb",
+          "notes": "Detailed treatment. Only Bernoulli (but that also applies to sub-Gaussian, right?). Also includes a proof."
+        },
+        {
+          "paper_id": "neuralucb",
+          "notes": "Extension to contextual bandits. But noise is still independent of context."
+        },
+        {
+          "paper_id": "simplecontextualbandit",
+          "notes": "Referenced in NeuralUCB. Relies on oracle."
+        },
+        {
+          "paper_id": "concentration-inequalities",
+          "notes": "Gaussian, general, sub-Gaussian etc. and how they link up. These are used in UCB bounds."
+        }
+      ],
+      "external_links": [
+        {
+          "url": "https://parameterfree.com/2019/11/21/multi-armed-bandit-iv-ucb/",
+          "title": "Multi-Armed Bandit IV: UCB – Parameter-free Learning and Optimization Algorithms",
+          "notes": "Quite handwavy but has nice illustrations. Part of a series of lectures that might be interesting."
+        },
+        {
+          "url": "https://arxiv.org/abs/1402.0555",
+          "title": "[1402.0555] Taming the Monster: A Fast and Simple Algorithm for Contextual Bandits",
+          "notes": "Referenced in NeuralUCB."
+        }
+      ]
+    },
+    {
+      "title": "UCB Comments and Notes",
+      "notes": null,
+      "papers": [],
+      "external_links": []
+    },
+    {
+      "title": "Reinforcement Learning and Exploration",
+      "notes": null,
+      "papers": [
+        {
+          "paper_id": "cae-ucb-bandits",
+          "notes": "UCB, bandits, MAB and RL exploration. Kind of bandit approach to exploration. Seems clear with useful links to recent work."
+        }
+      ],
+      "external_links": []
+    },
+    {
+      "title": "AlphaZero and Reinforcement Learning",
+      "notes": null,
+      "papers": [
+        {
+          "paper_id": "rl-in-alphazero",
+          "notes": "Overview. Quite detailed but missing some details. Handwavy explanation for why it works."
+        },
+        {
+          "paper_id": "alphazero-supplementary-material",
+          "notes": "Supplementary material with details of algorithm."
+        }
+      ],
+      "external_links": [
+        {
+          "url": "https://ai.stackexchange.com/questions/25451/how-does-alphazeros-mcts-work-when-starting-from-the-root-node",
+          "title": "How does AlphaZero's MCTS work when starting from the root node? - Artificial Intelligence Stack Exchange",
+          "notes": "Discussion: Details of how to choose child nodes. Discussion on what is actually implemented as UCB score—apparently adds 1 to ensure sanity."
+        },
+        {
+          "url": "https://www.analyticsvidhya.com/blog/2019/01/monte-carlo-tree-search-introduction-algorithm-deepmind-alphago/",
+          "title": "Monte Carlo Tree Search (MCTS): DeepMind AlphaGo",
+          "notes": "Handwavey but provides some overview."
+        },
+        {
+          "url": "https://www.science.org/doi/10.1126/science.aar6404",
+          "title": "A general reinforcement learning algorithm that masters chess, shogi, and Go through self-play | Science",
+          "notes": "AlphaZero paper. Possible paywall."
+        },
+        {
+          "url": "https://github.com/plkmo/AlphaZero_Connect4/blob/d4bcd24b54d4facf5333d90d0958cc2e72f994a9/src/MCTS_c4.py#L77",
+          "title": "AlphaZero_Connect4/src/MCTS_c4.py - GitHub",
+          "notes": "Simple AlphaZero implementation. Also adds 1 to child node count."
+        }
+      ]
+    },
+    {
+      "title": "Mixed Integer Linear Programming (MILP) and Machine Learning",
+      "notes": "Applications of machine learning techniques to MILP problems, which are NP-hard and benefit from approximate solutions.",
+      "papers": [
+        {
+          "paper_id": "ml-mixed-integer-programming",
+          "notes": "Foray into ML for MILP. MIP NP-hard so approximate solutions via ML welcome. Some links included."
+        }
+      ],
+      "external_links": [
+        {
+          "url": "https://arxiv.org/pdf/2203.02878",
+          "title": "A survey for solving mixed integer programming via machine learning",
+          "notes": "arXiv:2203.02878"
+        },
+        {
+          "url": "https://www.sciencedirect.com/science/article/abs/pii/S0925231222014035",
+          "title": "A survey for solving mixed integer programming via machine learning - ScienceDirect",
+          "notes": "Journal version of the MILP survey."
+        },
+        {
+          "url": "https://arxiv.org/html/2412.14409",
+          "title": "Multi-task Representation Learning for Mixed Integer Linear Programming",
+          "notes": "ML in MILP problems with overview and links."
+        }
+      ]
+    },
+    {
+      "title": "Other Resources and Tools",
+      "notes": "Utility resources including reinforcement learning environments, theoretical references, and documentation.",
+      "papers": [
+        {
+          "paper_id": "fung-2017-overview-resnet-its-variants",
+          "notes": null
+        },
+        {
+          "paper_id": "modeling-uncertainty-neural-networks",
+          "notes": "Series of articles on uncertainty modeling in neural networks, potentially relevant for probabilistic approaches in bandits and RL. Includes: Part 1: An introduction (molak-2021-modeling-uncertainty-neural-networks-3), Part 2: Aleatoric uncertainty (molak-2021-modeling-uncertainty-neural-networks-4), Part 3: Epistemic uncertainty (molak-2021-modeling-uncertainty-neural-networks-5), Part 4: Going fully probabilistic (molak-2021-modeling-uncertainty-neural-networks and molak-2021-modeling-uncertainty-neural-networks-2)."
+        },
+        {
+          "paper_id": "he-2024-data-poisoning-context-learning",
+          "notes": null
+        }
+      ],
+      "external_links": [
+        {
+          "url": "https://gymnasium.farama.org/environments/toy_text/frozen_lake/",
+          "title": "Frozen Lake - Gymnasium Documentation",
+          "notes": "Gym environment with noisy moves. Used in some MCTS papers. Also link to Gymnasium in general."
+        },
+        {
+          "url": "https://adityam.github.io/stochastic-control/",
+          "title": "Stochastic Control and Decision Theory",
+          "notes": "Lots on MDPs etc. Lots of useful links."
+        }
+      ]
+    }
+  ],
+  "external_links": []
+}

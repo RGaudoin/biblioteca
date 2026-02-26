@@ -1,0 +1,20 @@
+{
+  "id": "monte-carlo-tree-search",
+  "title": "Monte Carlo Tree Search on Graphs: AlphaZero Extensions",
+  "authors": [],
+  "year": null,
+  "source": null,
+  "tags": [],
+  "topics": [],
+  "summary": null,
+  "notes": "Interesting intro to UTC and PUCT. Extension to algorithm.",
+  "private": false,
+  "added": "2026-02-26",
+  "pdf_filename": null,
+  "url": null,
+  "arxiv_id": null,
+  "doi": null,
+  "import_source": "reading-list",
+  "original_filename": null,
+  "pdf_hash": null
+}

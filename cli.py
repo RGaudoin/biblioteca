@@ -61,9 +61,47 @@ def cmd_import_url(args):
 
 
 def cmd_import_batch(args):
-    from importers import import_batch
-    print(f"Importing PDFs from: {args.folder}...")
-    results = import_batch(args.folder, use_ai=args.ai)
+    from importers import import_batch, scan_batch
+
+    if args.interactive:
+        # Scan first, show results, ask for confirmation
+        print(f"Scanning: {args.folder}...")
+        scan = scan_batch(args.folder, recursive=args.recursive)
+
+        if not scan:
+            print("No PDFs found.")
+            return
+
+        new_files = [f for f in scan if f["status"] == "new"]
+        dupes = [f for f in scan if f["status"] == "duplicate"]
+        empty = [f for f in scan if f["status"] == "empty"]
+
+        print(f"\nFound {len(scan)} PDFs:")
+        for f in scan:
+            size_kb = f["size"] // 1024
+            if f["status"] == "new":
+                print(f"  [NEW]  {f['filename']} ({size_kb} KB)")
+            elif f["status"] == "duplicate":
+                print(f"  [DUP]  {f['filename']} — duplicate of {f['existing_id']}")
+            elif f["status"] == "empty":
+                print(f"  [---]  {f['filename']} — empty file")
+
+        print(f"\nSummary: {len(new_files)} new, {len(dupes)} duplicates, {len(empty)} empty")
+
+        if not new_files:
+            print("Nothing new to import.")
+            return
+
+        answer = input(f"\nImport {len(new_files)} new papers? [y/N] ").strip().lower()
+        if answer != "y":
+            print("Cancelled.")
+            return
+
+        paths = [f["path"] for f in new_files]
+        results = import_batch(args.folder, use_ai=args.ai, paths=paths)
+    else:
+        print(f"Importing PDFs from: {args.folder}...")
+        results = import_batch(args.folder, use_ai=args.ai, recursive=args.recursive)
 
     for item in results["imported"]:
         print(f"  Imported: {item['paper_id']} ({item['path']})")
@@ -73,6 +111,22 @@ def cmd_import_batch(args):
         print(f"  Failed: {item['path']} — {item['error']}")
 
     print(f"\nSummary: {len(results['imported'])} imported, {len(results['skipped'])} skipped, {len(results['failed'])} failed")
+
+
+def cmd_import_links(args):
+    from importers import import_links_file
+    print(f"Importing links from: {args.path}...")
+    results = import_links_file(args.path)
+
+    for item in results["imported"]:
+        note = f" — {item['note']}" if item.get("note") else ""
+        print(f"  Imported: {item['paper_id']} ({item['line']}){note}")
+    for item in results["skipped"]:
+        print(f"  Skipped: {item['line']} — {item['reason']}")
+    for item in results["failed"]:
+        print(f"  Failed: {item['line']} — {item['error']}")
+
+    print(f"\nSummary: {len(results['imported'])} imported, {len(results.get('skipped', []))} skipped, {len(results['failed'])} failed")
 
 
 def cmd_import_emails(args):
@@ -90,6 +144,79 @@ def cmd_import_emails(args):
         print(f"  Imported: {item['paper_id']} ({item['url']}){note}")
     for item in results["failed"]:
         print(f"  Failed: {item['url']} — {item['error']}")
+
+
+def cmd_import_reading_list(args):
+    from importers import import_reading_list
+    print(f"Parsing reading list: {args.path}...")
+    result = import_reading_list(args.path)
+
+    if result["success"]:
+        print(f"Collection created: {result['collection_id']}")
+        print(f"  Matched papers: {len(result['matched'])}")
+        for pid in result["matched"]:
+            print(f"    {pid}")
+        print(f"  Stubs created: {len(result['stubs_created'])}")
+        for pid in result["stubs_created"]:
+            print(f"    {pid}")
+        print(f"  External links: {result['external_links']}")
+    else:
+        print(f"Error: {result['error']}", file=sys.stderr)
+        sys.exit(1)
+
+
+def cmd_extract(args):
+    from ai import extract_metadata
+    from papers import load_config, save_paper, PAPERS_DIR
+
+    config = load_config()
+    papers = list_papers()
+
+    if args.paper_id:
+        paper = load_paper(args.paper_id)
+        if paper is None:
+            print(f"Paper not found: {args.paper_id}", file=sys.stderr)
+            sys.exit(1)
+        papers = [paper]
+    else:
+        # Default: papers missing a title
+        papers = [p for p in papers if not p.get("title")]
+
+    if not papers:
+        print("No papers need extraction.")
+        return
+
+    print(f"Extracting metadata for {len(papers)} papers...")
+    updated = 0
+    for p in papers:
+        if not p.get("pdf_filename"):
+            print(f"  Skipped: {p['id']} — no PDF")
+            continue
+
+        pdf_path = PAPERS_DIR / p["pdf_filename"]
+        if not pdf_path.exists():
+            print(f"  Skipped: {p['id']} — PDF not found")
+            continue
+
+        extracted = extract_metadata(str(pdf_path), config)
+        if not extracted:
+            print(f"  Failed: {p['id']}")
+            continue
+
+        changed = False
+        for field in ["title", "authors", "year", "source", "summary", "tags"]:
+            if extracted.get(field) and not p.get(field):
+                p[field] = extracted[field]
+                changed = True
+
+        if changed:
+            save_paper(p)
+            updated += 1
+            print(f"  Updated: {p['id']} — {p.get('title', '?')}")
+        else:
+            print(f"  Unchanged: {p['id']}")
+
+    print(f"\n{updated} papers updated out of {len(papers)}")
 
 
 def cmd_list(args):
@@ -199,12 +326,29 @@ def main():
     p = import_sub.add_parser("batch", help="Import all PDFs from a folder")
     p.add_argument("folder", help="Path to folder")
     p.add_argument("--ai", action="store_true", help="Use AI for metadata extraction")
+    p.add_argument("-i", "--interactive", action="store_true", help="Scan first, show duplicates, confirm before importing")
+    p.add_argument("-r", "--recursive", action="store_true", help="Scan subdirectories too")
     p.set_defaults(func=cmd_import_batch)
 
     # import emails
     p = import_sub.add_parser("emails", help="Parse email text and import URLs")
     p.add_argument("path", help="Path to email text file or raw text")
     p.set_defaults(func=cmd_import_emails)
+
+    # import links
+    p = import_sub.add_parser("links", help="Import from a text file of URLs/arxiv IDs")
+    p.add_argument("path", help="Path to text file (one URL or arxiv ID per line)")
+    p.set_defaults(func=cmd_import_links)
+
+    # import reading-list
+    p = import_sub.add_parser("reading-list", help="Parse a reading list/notes file into a collection (AI)")
+    p.add_argument("path", help="Path to reading list file (.md, .txt, .pdf)")
+    p.set_defaults(func=cmd_import_reading_list)
+
+    # --- extract ---
+    p = subparsers.add_parser("extract", help="Extract metadata using AI")
+    p.add_argument("paper_id", nargs="?", help="Paper ID (default: all papers missing titles)")
+    p.set_defaults(func=cmd_extract)
 
     # --- list ---
     p = subparsers.add_parser("list", help="List papers")

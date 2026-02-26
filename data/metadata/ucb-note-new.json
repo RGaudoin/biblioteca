@@ -1,0 +1,28 @@
+{
+  "id": "ucb-note-new",
+  "title": "Note on the UCB Algorithm",
+  "authors": [
+    "Wen Sun"
+  ],
+  "year": 2021,
+  "source": "Cornell University (Course Note)",
+  "tags": [
+    "multi-armed bandit",
+    "ucb algorithm",
+    "regret analysis",
+    "exploration-exploitation",
+    "online learning"
+  ],
+  "topics": [],
+  "summary": "This paper provides an overview of the Upper Confidence Bound (UCB) algorithm for solving the multi-armed bandit problem. The work explains the explore-exploit dilemma, introduces key statistical tools like Hoeffding's inequality, and proves that UCB achieves optimal Õ(√KT) regret through an optimistic approach that balances estimated rewards with uncertainty bonuses.",
+  "notes": null,
+  "private": false,
+  "added": "2026-02-26",
+  "pdf_filename": "ucb-note-new.pdf",
+  "url": null,
+  "arxiv_id": null,
+  "doi": null,
+  "import_source": "local",
+  "original_filename": "UCB_note_new.pdf",
+  "pdf_hash": "caec23df649b2abf28c084794cc8e7204de35724cc337a8a9de0c340b725a61e"
+}

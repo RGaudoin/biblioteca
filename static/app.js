@@ -47,6 +47,16 @@ async function refreshLibrary() {
         const resp = await fetch('/api/papers?' + params);
         const data = await resp.json();
         renderPaperList(data.papers, data.total);
+
+        // Show bulk extract button if any papers lack titles
+        const untitled = data.papers.filter(p => !p.title);
+        const bulkBtn = document.getElementById('bulk-extract-btn');
+        if (untitled.length > 0) {
+            bulkBtn.style.display = '';
+            bulkBtn.textContent = `Extract Missing Metadata (${untitled.length} papers)`;
+        } else {
+            bulkBtn.style.display = 'none';
+        }
     } catch (err) {
         console.error('Failed to load papers:', err);
     }
@@ -110,6 +120,36 @@ async function loadFilters() {
 }
 
 
+async function bulkExtract() {
+    const btn = document.getElementById('bulk-extract-btn');
+    const originalText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Extracting... (this may take a while)';
+
+    try {
+        const resp = await fetch('/api/ai/bulk-extract', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({})
+        });
+        const data = await resp.json();
+        if (data.success) {
+            const updated = data.results.filter(r => r.status === 'updated').length;
+            const failed = data.results.filter(r => r.status === 'failed').length;
+            alert(`Bulk extraction complete: ${updated} updated, ${failed} failed out of ${data.processed} processed.`);
+            refreshLibrary();
+        } else {
+            alert('Bulk extraction failed: ' + (data.error || 'Unknown error'));
+        }
+    } catch (err) {
+        alert('Error: ' + err.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = originalText;
+    }
+}
+
+
 // --- Paper Detail Modal ---
 
 async function openPaper(paperId) {
@@ -133,7 +173,7 @@ function renderPaperModal(p) {
         { label: 'Source', value: p.source },
         { label: 'Tags', value: (p.tags || []).map(t => `<span class="tag">${esc(t)}</span>`).join(' '), html: true },
         { label: 'Topics', value: (p.topics || []).map(t => `<span class="tag topic">${esc(t)}</span>`).join(' '), html: true },
-        { label: 'Summary', value: p.summary },
+        { label: 'Summary', value: p.summary ? (p.summary + (p.summary_model ? ` <span style="opacity:0.5;font-size:0.85em">[${esc(p.summary_model)}]</span>` : '')) : null, html: true },
         { label: 'Notes', value: p.notes },
         { label: 'URL', value: p.url ? `<a href="${esc(p.url)}" target="_blank">${esc(p.url)}</a>` : null, html: true },
         { label: 'arXiv ID', value: p.arxiv_id },
@@ -379,17 +419,99 @@ async function handleArxivImport(e) {
     }
 }
 
-async function handleBatchImport(e) {
+let batchScanData = null;  // Store scan results for import step
+
+async function handleBatchScan(e) {
     e.preventDefault();
     const folder = document.getElementById('batch-folder').value.trim();
+    const recursive = document.getElementById('batch-recursive').checked;
+    showResult('batch-result', 'info', 'Scanning folder...');
+    document.getElementById('batch-scan-results').innerHTML = '';
+
+    try {
+        const resp = await fetch('/api/import/batch/scan', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ folder, recursive })
+        });
+        const data = await resp.json();
+        batchScanData = data.files || [];
+
+        if (batchScanData.length === 0) {
+            showResult('batch-result', 'info', 'No PDFs found.');
+            return;
+        }
+
+        const newFiles = batchScanData.filter(f => f.status === 'new');
+        const dupes = batchScanData.filter(f => f.status === 'duplicate');
+        const empty = batchScanData.filter(f => f.status === 'empty');
+
+        let html = `<p style="margin:0.75rem 0"><strong>${batchScanData.length}</strong> PDFs found: <strong>${newFiles.length}</strong> new, <strong>${dupes.length}</strong> duplicates, <strong>${empty.length}</strong> empty</p>`;
+        if (newFiles.length > 0) {
+            html += `<p style="margin:0 0 0.5rem"><label><input type="checkbox" checked onchange="toggleBatchAll(this.checked)"> Select all new</label></p>`;
+        }
+        html += '<div class="paper-list" style="max-height:300px;overflow-y:auto">';
+        for (let i = 0; i < batchScanData.length; i++) {
+            const f = batchScanData[i];
+            const sizeKb = Math.round(f.size / 1024);
+            if (f.status === 'new') {
+                html += `<div class="paper-card" style="padding:0.4rem 0.75rem"><label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer"><input type="checkbox" class="batch-file-cb" data-idx="${i}" checked><span class="badge-pdf">NEW</span> ${esc(f.filename)} (${sizeKb} KB)</label></div>`;
+            } else if (f.status === 'duplicate') {
+                html += `<div class="paper-card" style="padding:0.4rem 0.75rem;opacity:0.6"><span class="badge-ref">DUP</span> ${esc(f.filename)} — duplicate of ${esc(f.existing_id)}</div>`;
+            } else {
+                html += `<div class="paper-card" style="padding:0.4rem 0.75rem;opacity:0.4">${esc(f.filename)} — empty</div>`;
+            }
+        }
+        html += '</div>';
+        document.getElementById('batch-scan-results').innerHTML = html;
+        if (newFiles.length > 0) {
+            showResult('batch-result', 'info', `Scan complete. ${newFiles.length} new papers selected. Untick any you want to skip, then click "Import All New".`);
+        } else if (dupes.length > 0) {
+            showResult('batch-result', 'info', `All ${dupes.length} PDFs already in library. To update metadata, use "Extract Missing Metadata (AI)" in the Library tab.`);
+        } else {
+            showResult('batch-result', 'info', 'Scan complete. No importable PDFs found.');
+        }
+    } catch (err) {
+        showResult('batch-result', 'error', `Error: ${err.message}`);
+    }
+}
+
+function toggleBatchAll(checked) {
+    document.querySelectorAll('.batch-file-cb').forEach(cb => cb.checked = checked);
+}
+
+async function handleBatchImportAll() {
+    const folder = document.getElementById('batch-folder').value.trim();
+    if (!folder) return alert('Enter a folder path and scan first.');
+
     const ai = document.getElementById('batch-ai').checked;
-    showResult('batch-result', 'info', 'Importing folder...');
+    const recursive = document.getElementById('batch-recursive').checked;
+
+    // Use checked files from scan results
+    let paths = null;
+    if (batchScanData) {
+        const checkboxes = document.querySelectorAll('.batch-file-cb:checked');
+        if (checkboxes.length > 0) {
+            paths = Array.from(checkboxes).map(cb => batchScanData[parseInt(cb.dataset.idx)].path);
+        } else {
+            // No checkboxes at all means no scan was done, or nothing new
+            const newFiles = batchScanData.filter(f => f.status === 'new');
+            if (newFiles.length === 0) {
+                showResult('batch-result', 'info', 'All papers already imported. To update metadata, use "Extract Missing Metadata (AI)" in the Library tab.');
+                return;
+            }
+            showResult('batch-result', 'info', 'No papers selected. Tick the ones you want to import.');
+            return;
+        }
+    }
+
+    showResult('batch-result', 'info', 'Importing...');
 
     try {
         const resp = await fetch('/api/import/batch', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ folder, ai })
+            body: JSON.stringify({ folder, ai, recursive, paths })
         });
         const data = await resp.json();
         let msg = '';
@@ -397,9 +519,62 @@ async function handleBatchImport(e) {
         if (data.skipped && data.skipped.length) msg += `\nSkipped (${data.skipped.length}):\n` + data.skipped.map(s => `  ${s.path}: ${s.reason}`).join('\n') + '\n';
         if (data.failed && data.failed.length) msg += `\nFailed (${data.failed.length}):\n` + data.failed.map(f => `  ${f.path}: ${f.error}`).join('\n');
         showResult('batch-result', data.failed && data.failed.length ? 'error' : 'success', msg || 'No PDFs found.');
+        batchScanData = null;
         refreshLibrary();
     } catch (err) {
         showResult('batch-result', 'error', `Error: ${err.message}`);
+    }
+}
+
+async function handleLinksImport(e) {
+    e.preventDefault();
+    const text = document.getElementById('links-text').value.trim();
+    showResult('links-result', 'info', 'Importing links...');
+
+    try {
+        const resp = await fetch('/api/import/links', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text })
+        });
+        const data = await resp.json();
+        let msg = '';
+        if (data.imported && data.imported.length) msg += `Imported (${data.imported.length}):\n` + data.imported.map(i => `  ${i.paper_id} (${i.line})`).join('\n') + '\n';
+        if (data.skipped && data.skipped.length) msg += `\nSkipped (${data.skipped.length}):\n` + data.skipped.map(s => `  ${s.line}: ${s.reason}`).join('\n') + '\n';
+        if (data.failed && data.failed.length) msg += `\nFailed (${data.failed.length}):\n` + data.failed.map(f => `  ${f.line}: ${f.error}`).join('\n');
+        showResult('links-result', data.failed && data.failed.length ? 'error' : 'success', msg || 'No links found.');
+        refreshLibrary();
+    } catch (err) {
+        showResult('links-result', 'error', `Error: ${err.message}`);
+    }
+}
+
+async function handleReadingListImport(e) {
+    e.preventDefault();
+    const path = document.getElementById('reading-list-path').value.trim();
+    showResult('reading-list-result', 'info', 'Parsing reading list with AI... (this may take a moment)');
+
+    try {
+        const resp = await fetch('/api/import/reading-list', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ path })
+        });
+        const data = await resp.json();
+        if (data.success) {
+            let msg = `Collection created: ${data.collection_id}\n`;
+            msg += `Matched papers: ${data.matched.length}\n`;
+            data.matched.forEach(id => msg += `  ${id}\n`);
+            msg += `Stubs created: ${data.stubs_created.length}\n`;
+            data.stubs_created.forEach(id => msg += `  ${id}\n`);
+            msg += `External links: ${data.external_links}`;
+            showResult('reading-list-result', 'success', msg);
+            refreshLibrary();
+        } else {
+            showResult('reading-list-result', 'error', `Error: ${data.error}`);
+        }
+    } catch (err) {
+        showResult('reading-list-result', 'error', `Error: ${err.message}`);
     }
 }
 
@@ -463,19 +638,41 @@ async function openCollection(collId) {
         let html = `<h2>${esc(coll.title)}</h2>`;
         if (coll.description) html += `<p>${esc(coll.description)}</p>`;
 
+        // Fetch paper titles for display
+        const paperIds = new Set();
+        for (const section of (coll.sections || [])) {
+            for (const ref of (section.papers || [])) paperIds.add(ref.paper_id);
+        }
+        const paperTitles = {};
+        await Promise.all(Array.from(paperIds).map(async id => {
+            try {
+                const r = await fetch(`/api/papers/${id}`);
+                if (r.ok) { const p = await r.json(); paperTitles[id] = p.title; }
+            } catch (e) { /* ignore */ }
+        }));
+
         for (const section of (coll.sections || [])) {
             html += `<h3>${esc(section.title)}</h3>`;
             if (section.notes) html += `<p class="paper-meta">${esc(section.notes)}</p>`;
             html += '<div class="section-papers">';
             for (const ref of (section.papers || [])) {
+                const title = paperTitles[ref.paper_id] || ref.paper_id;
                 html += `<div class="paper-card" onclick="openPaper('${esc(ref.paper_id)}')">
-                    <div class="paper-title">${esc(ref.paper_id)}</div>
-                    ${ref.notes ? `<div class="paper-meta">${esc(ref.notes)}</div>` : ''}
+                    <div class="paper-title">${esc(title)}</div>
+                    ${ref.notes ? `<div class="paper-meta" style="white-space:pre-line">${esc(ref.notes)}</div>` : ''}
+                </div>`;
+            }
+            // Per-section external links
+            for (const link of (section.external_links || [])) {
+                html += `<div class="paper-card">
+                    <div class="paper-title"><a href="${esc(link.url)}" target="_blank">${esc(link.title || link.url)}</a></div>
+                    ${link.notes ? `<div class="paper-meta" style="white-space:pre-line">${esc(link.notes)}</div>` : ''}
                 </div>`;
             }
             html += '</div>';
         }
 
+        // Top-level external links (legacy)
         if (coll.external_links && coll.external_links.length) {
             html += '<h3>External Links</h3>';
             for (const link of coll.external_links) {

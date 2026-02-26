@@ -23,7 +23,7 @@ CONFIG_FILE = DATA_DIR / "config.json"
 DEFAULT_CONFIG = {
     "claude_api_key": None,
     "extraction_model": "claude-haiku-4-5-20251001",
-    "summary_model": "claude-sonnet-4-6-20250514",
+    "summary_model": "claude-sonnet-4-20250514",
     "api_usage": {"input_tokens": 0, "output_tokens": 0},
     "default_tags": [],
     "default_private": False,
@@ -188,6 +188,7 @@ def create_paper_stub(paper_id, pdf_filename, **kwargs):
         "doi": kwargs.get("doi"),
         "import_source": kwargs.get("import_source", "manual"),
         "original_filename": kwargs.get("original_filename"),
+        "pdf_hash": kwargs.get("pdf_hash"),
     }
     save_paper(metadata)
     return metadata

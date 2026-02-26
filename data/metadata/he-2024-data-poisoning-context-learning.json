@@ -1,0 +1,28 @@
+{
+  "id": "he-2024-data-poisoning-context-learning",
+  "title": "Data Poisoning for In-context Learning",
+  "authors": [
+    "Pengfei He",
+    "Han Xu",
+    "Yue Xing",
+    "Hui Liu",
+    "Makoto Yamada",
+    "Jiliang Tang"
+  ],
+  "year": 2024,
+  "source": null,
+  "tags": [
+    "cs.CR"
+  ],
+  "topics": [],
+  "summary": "In the domain of large language models (LLMs), in-context learning (ICL) has been recognized for its innovative ability to adapt to new tasks, relying on examples rather than retraining or fine-tuning. This paper delves into the critical issue of ICL's susceptibility to data poisoning attacks, an area not yet fully explored. We wonder whether ICL is vulnerable, with adversaries capable of manipulating example data to degrade model performance. To address this, we introduce ICLPoison, a specialized attacking framework conceived to exploit the learning mechanisms of ICL. Our approach uniquely employs discrete text perturbations to strategically influence the hidden states of LLMs during the ICL process. We outline three representative strategies to implement attacks under our framework, each rigorously evaluated across a variety of models and tasks. Our comprehensive tests, including trials on the sophisticated GPT-4 model, demonstrate that ICL's performance is significantly compromised under our framework. These revelations indicate an urgent need for enhanced defense mechanisms to safeguard the integrity and reliability of LLMs in applications relying on in-context learning.",
+  "notes": null,
+  "private": false,
+  "added": "2026-02-26",
+  "pdf_filename": "he-2024-data-poisoning-context-learning.pdf",
+  "url": "https://arxiv.org/abs/2402.02160",
+  "arxiv_id": "2402.02160",
+  "doi": null,
+  "import_source": "arxiv",
+  "original_filename": "2402.02160.pdf"
+}
