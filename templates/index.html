@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Biblioteca</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <header>
+        <h1>Biblioteca</h1>
+        <nav>
+            <button class="nav-btn active" onclick="showSection('library')">Library</button>
+            <button class="nav-btn" onclick="showSection('import')">Import</button>
+            <button class="nav-btn" onclick="showSection('collections')">Collections</button>
+            <button class="nav-btn" onclick="showSection('settings')">Settings</button>
+        </nav>
+    </header>
+
+    <main>
+        <!-- Library Section -->
+        <section id="library" class="section active">
+            <div class="toolbar">
+                <input type="text" id="search-input" placeholder="Search papers..." oninput="debounceSearch()">
+                <select id="tag-filter" onchange="refreshLibrary()">
+                    <option value="">All tags</option>
+                </select>
+                <select id="topic-filter" onchange="refreshLibrary()">
+                    <option value="">All topics</option>
+                </select>
+                <span id="paper-count" class="count-badge"></span>
+            </div>
+            <div id="paper-list" class="paper-list"></div>
+        </section>
+
+        <!-- Paper Detail Modal -->
+        <div id="paper-modal" class="modal-overlay" onclick="if(event.target===this)closeModal()">
+            <div class="modal">
+                <div class="modal-header">
+                    <h2 id="modal-title"></h2>
+                    <button class="close-btn" onclick="closeModal()">&times;</button>
+                </div>
+                <div id="modal-body" class="modal-body"></div>
+            </div>
+        </div>
+
+        <!-- Import Section -->
+        <section id="import" class="section">
+            <div class="tab-bar">
+                <button class="tab-btn active" onclick="showTab('import', 'tab-file')">Upload PDF</button>
+                <button class="tab-btn" onclick="showTab('import', 'tab-url')">URL</button>
+                <button class="tab-btn" onclick="showTab('import', 'tab-arxiv')">arXiv</button>
+                <button class="tab-btn" onclick="showTab('import', 'tab-batch')">Batch</button>
+                <button class="tab-btn" onclick="showTab('import', 'tab-emails')">Emails</button>
+            </div>
+
+            <div id="tab-file" class="tab-content active">
+                <h3>Upload PDF</h3>
+                <form id="upload-form" onsubmit="return handleUpload(event)">
+                    <input type="file" id="pdf-file" accept=".pdf" required>
+                    <label><input type="checkbox" id="upload-ai"> Use AI for metadata extraction</label>
+                    <button type="submit">Import</button>
+                </form>
+                <div id="upload-result" class="result-box"></div>
+            </div>
+
+            <div id="tab-url" class="tab-content">
+                <h3>Import from URL</h3>
+                <p>Supports arXiv, DOI, direct PDF links, and GitHub repositories.</p>
+                <form onsubmit="return handleUrlImport(event)">
+                    <input type="url" id="import-url" placeholder="https://arxiv.org/abs/2402.02160" required>
+                    <button type="submit">Import</button>
+                </form>
+                <div id="url-result" class="result-box"></div>
+            </div>
+
+            <div id="tab-arxiv" class="tab-content">
+                <h3>Import from arXiv</h3>
+                <p>Enter an arXiv ID (e.g. 2402.02160) or full URL.</p>
+                <form onsubmit="return handleArxivImport(event)">
+                    <input type="text" id="arxiv-id" placeholder="2402.02160" required>
+                    <button type="submit">Import</button>
+                </form>
+                <div id="arxiv-result" class="result-box"></div>
+            </div>
+
+            <div id="tab-batch" class="tab-content">
+                <h3>Batch Import</h3>
+                <p>Import all PDFs from a folder on disk.</p>
+                <form onsubmit="return handleBatchImport(event)">
+                    <input type="text" id="batch-folder" placeholder="/home/user/Documents/papers/" required>
+                    <label><input type="checkbox" id="batch-ai"> Use AI for metadata extraction</label>
+                    <button type="submit">Import Folder</button>
+                </form>
+                <div id="batch-result" class="result-box"></div>
+            </div>
+
+            <div id="tab-emails" class="tab-content">
+                <h3>Import from Emails</h3>
+                <p>Paste email text containing URLs. Each URL will be imported separately.</p>
+                <form onsubmit="return handleEmailImport(event)">
+                    <textarea id="email-text" rows="10" placeholder="Paste email text here..."></textarea>
+                    <button type="submit">Parse &amp; Import</button>
+                </form>
+                <div id="email-result" class="result-box"></div>
+            </div>
+        </section>
+
+        <!-- Collections Section -->
+        <section id="collections" class="section">
+            <div class="toolbar">
+                <button onclick="showCreateCollection()">New Collection</button>
+            </div>
+            <div id="collections-list" class="paper-list"></div>
+            <div id="collection-detail" class="collection-detail" style="display:none"></div>
+        </section>
+
+        <!-- Settings Section -->
+        <section id="settings" class="section">
+            <h2>Settings</h2>
+
+            <div class="settings-group">
+                <h3>Claude API Key</h3>
+                <div id="api-key-status"></div>
+                <input type="password" id="api-key-input" placeholder="sk-ant-...">
+                <button onclick="saveApiKey()">Save Key</button>
+                <button onclick="testApiKey()">Test Key</button>
+                <button onclick="clearApiKey()">Clear Key</button>
+            </div>
+
+            <div class="settings-group">
+                <h3>Models</h3>
+                <label>Extraction model:
+                    <input type="text" id="extraction-model" placeholder="claude-haiku-4-5-20251001">
+                </label>
+                <label>Summary model:
+                    <input type="text" id="summary-model" placeholder="claude-sonnet-4-6-20250514">
+                </label>
+                <button onclick="saveModels()">Save Models</button>
+            </div>
+
+            <div class="settings-group">
+                <h3>API Usage</h3>
+                <div id="usage-stats"></div>
+            </div>
+        </section>
+    </main>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
