@@ -1,12 +1,20 @@
 {
   "id": "concentration-inequalities",
-  "title": null,
-  "authors": [],
+  "title": "Lecture 7: Concentration inequalities",
+  "authors": [
+    "Sebastien Roch"
+  ],
   "year": null,
-  "source": null,
-  "tags": [],
+  "source": "Math 733-734: Theory of Probability",
+  "tags": [
+    "concentration inequalities",
+    "chernoff-cramér bound",
+    "sub-gaussian random variables",
+    "moment-generating function",
+    "tail bounds"
+  ],
   "topics": [],
-  "summary": null,
+  "summary": "This lecture notes covers concentration inequalities for random variables, including Markov's and Chebyshev's inequalities as foundations. It presents the Chernoff-Cramér method for deriving exponential tail bounds using moment-generating functions, with applications to Gaussian random variables, random walks, and binomial distributions. The notes introduce sub-Gaussian random variables as an important class for which strong concentration results can be derived.",
   "notes": null,
   "private": false,
   "added": "2026-02-26",
@@ -16,5 +24,6 @@
   "doi": null,
   "import_source": "local",
   "original_filename": "concentration_inequalities.pdf",
-  "pdf_hash": "4f223cc62bc16ff83caeaf20c371239b4044b65ed4911910be3f7d02e9970bd1"
+  "pdf_hash": "4f223cc62bc16ff83caeaf20c371239b4044b65ed4911910be3f7d02e9970bd1",
+  "summary_model": "claude-haiku-4-5-20251001"
 }

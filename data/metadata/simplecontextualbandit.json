@@ -1,12 +1,25 @@
 {
   "id": "simplecontextualbandit",
-  "title": null,
-  "authors": [],
-  "year": null,
-  "source": null,
-  "tags": [],
+  "title": "Taming the Monster: A Fast and Simple Algorithm for Contextual Bandits",
+  "authors": [
+    "Alekh Agarwal",
+    "Daniel Hsu",
+    "Satyen Kale",
+    "John Langford",
+    "Lihong Li",
+    "Robert E. Schapire"
+  ],
+  "year": 2014,
+  "source": "arXiv:1402.0555",
+  "tags": [
+    "contextual bandits",
+    "regret bounds",
+    "optimization oracle",
+    "machine learning",
+    "exploration-exploitation"
+  ],
   "topics": [],
-  "summary": null,
+  "summary": "This paper presents a fast and simple algorithm for contextual bandits that achieves optimal regret bounds with only Õ(√(KT/log N)) oracle calls across T rounds, vastly improving upon prior work. The algorithm uses a coordinate descent procedure to compute a sparse distribution over policies and an epoch-based structure for efficient updates. The authors provide theoretical analysis and experimental validation demonstrating superior computational and prediction performance compared to existing approaches.",
   "notes": null,
   "private": false,
   "added": "2026-02-26",
@@ -16,5 +29,6 @@
   "doi": null,
   "import_source": "local",
   "original_filename": "SimpleContextualBandit.pdf",
-  "pdf_hash": "ceb873b02971a2138d419685a5e4d44f69f61f80a6491a2c267100563610e2a5"
+  "pdf_hash": "ceb873b02971a2138d419685a5e4d44f69f61f80a6491a2c267100563610e2a5",
+  "summary_model": "claude-haiku-4-5-20251001"
 }

@@ -1,12 +1,23 @@
 {
   "id": "mcts-stochastic",
-  "title": null,
-  "authors": [],
-  "year": null,
-  "source": null,
-  "tags": [],
+  "title": "Polynomial Regret Concentration of UCB for Non-Deterministic State Transitions",
+  "authors": [
+    "Can Cömer",
+    "Jannis Blüml",
+    "Cedric Derstroff",
+    "Kristian Kersting"
+  ],
+  "year": 2025,
+  "source": "arXiv",
+  "tags": [
+    "monte carlo tree search",
+    "upper confidence bound",
+    "stochastic environments",
+    "regret concentration",
+    "multi-armed bandits"
+  ],
   "topics": [],
-  "summary": null,
+  "summary": "This paper extends the theoretical framework of Monte Carlo Tree Search (MCTS) to stochastic domains by deriving polynomial regret concentration bounds for the Upper Confidence Bound algorithm in multi-armed bandit problems with non-deterministic state transitions. The authors prove that these bounds apply to non-deterministic environments with fixed transition probabilities, broadening MCTS applicability to real-world decision-making problems such as autonomous systems and financial decision-making where probabilistic outcomes are prevalent.",
   "notes": null,
   "private": false,
   "added": "2026-02-26",
@@ -16,5 +27,6 @@
   "doi": null,
   "import_source": "local",
   "original_filename": "MCTS_stochastic.pdf",
-  "pdf_hash": "d4f90448d02181dc36ed0fe1e944fbb7301542db652ee779a104c420c7967480"
+  "pdf_hash": "d4f90448d02181dc36ed0fe1e944fbb7301542db652ee779a104c420c7967480",
+  "summary_model": "claude-haiku-4-5-20251001"
 }

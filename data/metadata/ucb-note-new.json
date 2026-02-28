@@ -14,7 +14,7 @@
     "online learning"
   ],
   "topics": [],
-  "summary": "This paper provides an overview of the Upper Confidence Bound (UCB) algorithm for solving the multi-armed bandit problem. The work explains the explore-exploit dilemma, introduces key statistical tools like Hoeffding's inequality, and proves that UCB achieves optimal Õ(√KT) regret through an optimistic approach that balances estimated rewards with uncertainty bonuses.",
+  "summary": "This paper presents an analysis of the Upper Confidence Bound (UCB) algorithm for the multi-armed bandit problem, where a learner must balance exploration and exploitation when choosing among K arms with unknown reward distributions. The UCB algorithm maintains confidence intervals for each arm's expected reward and selects the arm with the highest upper confidence bound, achieving an optimal regret bound of O(√KT log(TK/δ)) with high probability. The analysis uses concentration inequalities (specifically Hoeffding's inequality) and union bounds to show that UCB's \"optimistic in the face of uncertainty\" strategy successfully balances exploring under-sampled arms while exploiting promising ones.",
   "notes": null,
   "private": false,
   "added": "2026-02-26",
@@ -24,5 +24,6 @@
   "doi": null,
   "import_source": "local",
   "original_filename": "UCB_note_new.pdf",
-  "pdf_hash": "caec23df649b2abf28c084794cc8e7204de35724cc337a8a9de0c340b725a61e"
+  "pdf_hash": "caec23df649b2abf28c084794cc8e7204de35724cc337a8a9de0c340b725a61e",
+  "summary_model": "claude-sonnet-4-20250514"
 }

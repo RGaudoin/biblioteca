@@ -13,6 +13,7 @@
             <button class="nav-btn active" onclick="showSection('library')">Library</button>
             <button class="nav-btn" onclick="showSection('import')">Import</button>
             <button class="nav-btn" onclick="showSection('collections')">Collections</button>
+            <button class="nav-btn" onclick="showSection('tags')">Tags</button>
             <button class="nav-btn" onclick="showSection('settings')">Settings</button>
         </nav>
     </header>
@@ -145,6 +146,16 @@ https://example.com/paper.pdf
             </div>
             <div id="collections-list" class="paper-list"></div>
             <div id="collection-detail" class="collection-detail" style="display:none"></div>
+        </section>
+
+        <!-- Tags Management Section -->
+        <section id="tags" class="section">
+            <h2>Tag Management</h2>
+            <div class="toolbar">
+                <button onclick="suggestTagMerges()">Suggest Merges (AI)</button>
+            </div>
+            <div id="tag-suggestions" class="result-box"></div>
+            <div id="tags-list" class="paper-list"></div>
         </section>
 
         <!-- Settings Section -->

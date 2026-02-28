@@ -1,12 +1,20 @@
 {
   "id": "glauben2022replacing",
-  "title": null,
-  "authors": [],
-  "year": null,
-  "source": null,
-  "tags": [],
+  "title": "Replacing PUCT with a Planning Model",
+  "authors": [
+    "Adrian Glauben"
+  ],
+  "year": 2022,
+  "source": "Master Thesis, TU Darmstadt",
+  "tags": [
+    "reinforcement learning",
+    "monte carlo tree search",
+    "alphazero",
+    "planning models",
+    "policy optimization"
+  ],
   "topics": [],
-  "summary": null,
+  "summary": "This thesis proposes replacing upper confidence bounds applied to trees (PUCT) with a learned planning model for action selection in Monte Carlo tree search. The authors train a base model using AlphaZero on Connect4, initialize a planning model through imitation learning, and investigate optimization using proximal policy optimization to improve agent performance.",
   "notes": null,
   "private": false,
   "added": "2026-02-26",
@@ -16,5 +24,6 @@
   "doi": null,
   "import_source": "local",
   "original_filename": "glauben2022replacing.pdf",
-  "pdf_hash": "1543bb9f800a1893c67e9a70e7617c2afe45024151ef58260d0f7607cccbe4c2"
+  "pdf_hash": "1543bb9f800a1893c67e9a70e7617c2afe45024151ef58260d0f7607cccbe4c2",
+  "summary_model": "claude-haiku-4-5-20251001"
 }

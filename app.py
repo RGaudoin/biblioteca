@@ -128,6 +128,47 @@ def api_topics():
     return jsonify(get_all_topics())
 
 
+@app.route("/api/tags/rename", methods=["POST"])
+def api_rename_tag():
+    """Rename a tag across all papers."""
+    data = request.json or {}
+    old_tag = data.get("old_tag", "").strip()
+    new_tag = data.get("new_tag", "").strip()
+    if not old_tag or not new_tag:
+        return jsonify({"success": False, "error": "Both old_tag and new_tag are required"}), 400
+
+    from papers import rename_tag
+    count = rename_tag(old_tag, new_tag)
+    return jsonify({"success": True, "updated": count})
+
+
+@app.route("/api/tags/merge", methods=["POST"])
+def api_merge_tags():
+    """Merge multiple tags into one."""
+    data = request.json or {}
+    tags_to_merge = data.get("tags", [])
+    target_tag = data.get("target", "").strip()
+    if len(tags_to_merge) < 1 or not target_tag:
+        return jsonify({"success": False, "error": "Provide tags list and target"}), 400
+
+    from papers import merge_tags
+    count = merge_tags(tags_to_merge, target_tag)
+    return jsonify({"success": True, "updated": count})
+
+
+@app.route("/api/tags/delete", methods=["POST"])
+def api_delete_tag():
+    """Remove a tag from all papers."""
+    data = request.json or {}
+    tag = data.get("tag", "").strip()
+    if not tag:
+        return jsonify({"success": False, "error": "Tag is required"}), 400
+
+    from papers import delete_tag
+    count = delete_tag(tag)
+    return jsonify({"success": True, "updated": count})
+
+
 # --- Import ---
 
 @app.route("/api/import/file", methods=["POST"])
@@ -351,6 +392,28 @@ def api_delete_collection(collection_id):
     return jsonify({"error": "Collection not found"}), 404
 
 
+@app.route("/api/collections/<collection_id>/apply-topics", methods=["POST"])
+def api_apply_collection_topics(collection_id):
+    """Retroactively assign section titles as topics to papers in a collection."""
+    coll = load_collection(collection_id)
+    if coll is None:
+        return jsonify({"error": "Collection not found"}), 404
+
+    from importers import _apply_reading_list_metadata
+    updated = []
+    for section in coll.get("sections", []):
+        for ref in section.get("papers", []):
+            _apply_reading_list_metadata(
+                ref["paper_id"],
+                section.get("title", ""),
+                ref.get("notes"),
+                coll.get("title", ""),
+            )
+            updated.append(ref["paper_id"])
+
+    return jsonify({"success": True, "updated": list(set(updated))})
+
+
 # --- AI ---
 
 @app.route("/api/ai/bulk-extract", methods=["POST"])
@@ -399,8 +462,12 @@ def api_ai_bulk_extract():
             if extracted.get(field) and not paper.get(field):
                 paper[field] = extracted[field]
                 updated = True
-        if extracted.get("summary_model") and extracted.get("summary") == paper.get("summary"):
+                if field == "summary" and extracted.get("summary_model"):
+                    paper["summary_model"] = extracted["summary_model"]
+        # Backfill: paper has summary but no model recorded
+        if not paper.get("summary_model") and paper.get("summary") and extracted.get("summary_model"):
             paper["summary_model"] = extracted["summary_model"]
+            updated = True
 
         if updated:
             save_paper(paper)
@@ -445,9 +512,12 @@ def api_ai_extract(paper_id):
         if extracted.get(field) and not paper.get(field):
             paper[field] = extracted[field]
             updated = True
-    # Track which model produced the summary
-    if extracted.get("summary_model") and extracted.get("summary") == paper.get("summary"):
+            if field == "summary" and extracted.get("summary_model"):
+                paper["summary_model"] = extracted["summary_model"]
+    # Backfill: paper has summary but no model recorded
+    if not paper.get("summary_model") and paper.get("summary") and extracted.get("summary_model"):
         paper["summary_model"] = extracted["summary_model"]
+        updated = True
 
     if updated:
         save_paper(paper)
@@ -487,6 +557,19 @@ def api_ai_summarise(paper_id):
     save_paper(paper)
 
     return jsonify({"success": True, "paper": paper, "summary": result["summary"]})
+
+
+@app.route("/api/ai/suggest-tag-merges", methods=["POST"])
+def api_suggest_tag_merges():
+    """Use AI to suggest tag consolidations."""
+    config = load_config()
+    if not get_api_key(config):
+        return jsonify({"success": False, "error": "No API key configured"}), 400
+
+    from ai import suggest_tag_merges
+    tags = get_all_tags()
+    suggestions = suggest_tag_merges(tags, config)
+    return jsonify({"success": True, "suggestions": suggestions})
 
 
 # --- Config ---

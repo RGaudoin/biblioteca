@@ -13,6 +13,7 @@ function showSection(sectionId) {
 
     if (sectionId === 'library') refreshLibrary();
     if (sectionId === 'collections') refreshCollections();
+    if (sectionId === 'tags') refreshTagManagement();
     if (sectionId === 'settings') loadSettings();
 }
 
@@ -26,6 +27,31 @@ function showTab(section, tabId) {
 
 
 // --- Library ---
+
+function filterByTag(tag) {
+    closeModal();
+    document.getElementById('tag-filter').value = tag;
+    document.getElementById('topic-filter').value = '';
+    document.getElementById('search-input').value = '';
+    // Switch to library section
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('library').classList.add('active');
+    document.querySelector('.nav-btn').classList.add('active');
+    refreshLibrary();
+}
+
+function filterByTopic(topic) {
+    closeModal();
+    document.getElementById('topic-filter').value = topic;
+    document.getElementById('tag-filter').value = '';
+    document.getElementById('search-input').value = '';
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('library').classList.add('active');
+    document.querySelector('.nav-btn').classList.add('active');
+    refreshLibrary();
+}
 
 function debounceSearch() {
     clearTimeout(searchTimeout);
@@ -76,16 +102,19 @@ function renderPaperList(papers, total) {
     }
 
     container.innerHTML = papers.map(p => {
-        const title = p.title || '(no title)';
+        const title = paperDisplayTitle(p);
+        const titleClass = p.title ? '' : ' unprocessed';
         const authors = (p.authors || []).join(', ');
         const year = p.year || '';
         const meta = [authors, year, p.source].filter(Boolean).join(' · ');
-        const badge = p.pdf_filename ? '<span class="badge-pdf">PDF</span>' : '<span class="badge-ref">REF</span>';
-        const tags = (p.tags || []).map(t => `<span class="tag">${esc(t)}</span>`).join('');
-        const topics = (p.topics || []).map(t => `<span class="tag topic">${esc(t)}</span>`).join('');
+        const badge = !p.pdf_filename ? '<span class="badge-ref">REF</span>'
+            : !p.title ? '<span class="badge-new">NEW</span>'
+            : '<span class="badge-pdf">PDF</span>';
+        const tags = (p.tags || []).map(t => `<span class="tag clickable" onclick="event.stopPropagation(); filterByTag('${esc(t)}')">${esc(t)}</span>`).join('');
+        const topics = (p.topics || []).map(t => `<span class="tag topic clickable" onclick="event.stopPropagation(); filterByTopic('${esc(t)}')">${esc(t)}</span>`).join('');
 
         return `<div class="paper-card" onclick="openPaper('${esc(p.id)}')">
-            <div class="paper-title">${badge} ${esc(title)}</div>
+            <div class="paper-title${titleClass}">${badge} ${esc(title)}</div>
             <div class="paper-meta">${esc(meta)}</div>
             ${(tags || topics) ? `<div class="paper-tags">${tags}${topics}</div>` : ''}
         </div>`;
@@ -165,14 +194,16 @@ async function openPaper(paperId) {
 }
 
 function renderPaperModal(p) {
-    document.getElementById('modal-title').textContent = p.title || '(no title)';
+    const modalTitle = document.getElementById('modal-title');
+    modalTitle.textContent = paperDisplayTitle(p);
+    modalTitle.className = p.title ? '' : 'unprocessed';
 
     const fields = [
         { label: 'Authors', value: (p.authors || []).join(', ') },
         { label: 'Year', value: p.year },
         { label: 'Source', value: p.source },
-        { label: 'Tags', value: (p.tags || []).map(t => `<span class="tag">${esc(t)}</span>`).join(' '), html: true },
-        { label: 'Topics', value: (p.topics || []).map(t => `<span class="tag topic">${esc(t)}</span>`).join(' '), html: true },
+        { label: 'Tags', value: (p.tags || []).map(t => `<span class="tag clickable" onclick="filterByTag('${esc(t)}')">${esc(t)}</span>`).join(' '), html: true },
+        { label: 'Topics', value: (p.topics || []).map(t => `<span class="tag topic clickable" onclick="filterByTopic('${esc(t)}')">${esc(t)}</span>`).join(' '), html: true },
         { label: 'Summary', value: p.summary ? (p.summary + (p.summary_model ? ` <span style="opacity:0.5;font-size:0.85em">[${esc(p.summary_model)}]</span>` : '')) : null, html: true },
         { label: 'Notes', value: p.notes },
         { label: 'URL', value: p.url ? `<a href="${esc(p.url)}" target="_blank">${esc(p.url)}</a>` : null, html: true },
@@ -638,16 +669,16 @@ async function openCollection(collId) {
         let html = `<h2>${esc(coll.title)}</h2>`;
         if (coll.description) html += `<p>${esc(coll.description)}</p>`;
 
-        // Fetch paper titles for display
+        // Fetch paper data for display
         const paperIds = new Set();
         for (const section of (coll.sections || [])) {
             for (const ref of (section.papers || [])) paperIds.add(ref.paper_id);
         }
-        const paperTitles = {};
+        const paperData = {};
         await Promise.all(Array.from(paperIds).map(async id => {
             try {
                 const r = await fetch(`/api/papers/${id}`);
-                if (r.ok) { const p = await r.json(); paperTitles[id] = p.title; }
+                if (r.ok) { paperData[id] = await r.json(); }
             } catch (e) { /* ignore */ }
         }));
 
@@ -656,9 +687,15 @@ async function openCollection(collId) {
             if (section.notes) html += `<p class="paper-meta">${esc(section.notes)}</p>`;
             html += '<div class="section-papers">';
             for (const ref of (section.papers || [])) {
-                const title = paperTitles[ref.paper_id] || ref.paper_id;
+                const p = paperData[ref.paper_id];
+                const title = p ? paperDisplayTitle(p) : ref.paper_id;
+                const badge = !p ? ''
+                    : !p.pdf_filename ? '<span class="badge-ref">REF</span> '
+                    : !p.title ? '<span class="badge-new">NEW</span> '
+                    : '<span class="badge-pdf">PDF</span> ';
+                const titleClass = (p && !p.title) ? ' unprocessed' : '';
                 html += `<div class="paper-card" onclick="openPaper('${esc(ref.paper_id)}')">
-                    <div class="paper-title">${esc(title)}</div>
+                    <div class="paper-title${titleClass}">${badge}${esc(title)}</div>
                     ${ref.notes ? `<div class="paper-meta" style="white-space:pre-line">${esc(ref.notes)}</div>` : ''}
                 </div>`;
             }
@@ -684,6 +721,7 @@ async function openCollection(collId) {
         }
 
         html += `<div class="modal-actions">
+            <button onclick="applyCollectionTopics('${esc(collId)}')">Apply Topics to Papers</button>
             <button onclick="refreshCollections()">Back to list</button>
             <button onclick="deleteCollection('${esc(collId)}')" style="color:var(--error)">Delete</button>
         </div>`;
@@ -714,6 +752,22 @@ function showCreateCollection() {
     .catch(err => alert('Error: ' + err.message));
 }
 
+async function applyCollectionTopics(collId) {
+    if (!confirm('Assign section titles as topics to all papers in this collection, and merge per-paper notes?')) return;
+    try {
+        const resp = await fetch(`/api/collections/${collId}/apply-topics`, { method: 'POST' });
+        const data = await resp.json();
+        if (data.success) {
+            alert(`Topics and notes applied to ${data.updated.length} papers.`);
+            refreshLibrary();
+        } else {
+            alert('Error: ' + (data.error || 'Unknown'));
+        }
+    } catch (err) {
+        alert('Error: ' + err.message);
+    }
+}
+
 async function deleteCollection(collId) {
     if (!confirm('Delete this collection?')) return;
     try {
@@ -726,6 +780,155 @@ async function deleteCollection(collId) {
     } catch (err) {
         alert('Error: ' + err.message);
     }
+}
+
+
+// --- Tag Management ---
+
+async function refreshTagManagement() {
+    try {
+        const resp = await fetch('/api/tags');
+        const tags = await resp.json();
+        const container = document.getElementById('tags-list');
+
+        if (Object.keys(tags).length === 0) {
+            container.innerHTML = '<div class="empty-state"><p>No tags yet</p></div>';
+            return;
+        }
+
+        let html = '<div style="margin-bottom:0.75rem">';
+        html += '<button onclick="mergeSelectedTags()">Merge Selected</button> ';
+        html += '<button onclick="deleteSelectedTags()" style="color:var(--error)">Delete Selected</button>';
+        html += '</div>';
+
+        for (const [tag, count] of Object.entries(tags)) {
+            html += `<div class="paper-card" style="padding:0.4rem 0.75rem">
+                <label style="display:flex;align-items:center;gap:0.75rem;cursor:pointer;font-weight:normal">
+                    <input type="checkbox" class="tag-select-cb" data-tag="${esc(tag)}">
+                    <span class="tag clickable" onclick="event.preventDefault(); filterByTag('${esc(tag)}')">${esc(tag)}</span>
+                    <span class="paper-meta">${count} paper${count !== 1 ? 's' : ''}</span>
+                    <span style="margin-left:auto">
+                        <button onclick="event.preventDefault(); renameTag('${esc(tag)}')" style="padding:0.2rem 0.5rem;font-size:0.8rem">Rename</button>
+                    </span>
+                </label>
+            </div>`;
+        }
+        container.innerHTML = html;
+    } catch (err) {
+        console.error('Failed to load tags:', err);
+    }
+}
+
+async function renameTag(oldTag) {
+    const newTag = prompt(`Rename "${oldTag}" to:`, oldTag);
+    if (!newTag || newTag === oldTag) return;
+
+    try {
+        const resp = await fetch('/api/tags/rename', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ old_tag: oldTag, new_tag: newTag })
+        });
+        const data = await resp.json();
+        if (data.success) {
+            alert(`Renamed: ${data.updated} papers updated.`);
+            refreshTagManagement();
+        }
+    } catch (err) { alert('Error: ' + err.message); }
+}
+
+async function mergeSelectedTags() {
+    const checked = Array.from(document.querySelectorAll('.tag-select-cb:checked'));
+    if (checked.length < 2) return alert('Select at least 2 tags to merge.');
+
+    const tags = checked.map(cb => cb.dataset.tag);
+    const target = prompt(`Merge these tags into one:\n${tags.join(', ')}\n\nTarget tag name:`, tags[0]);
+    if (!target) return;
+
+    try {
+        const resp = await fetch('/api/tags/merge', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tags, target })
+        });
+        const data = await resp.json();
+        if (data.success) {
+            alert(`Merged: ${data.updated} papers updated.`);
+            refreshTagManagement();
+        }
+    } catch (err) { alert('Error: ' + err.message); }
+}
+
+async function deleteSelectedTags() {
+    const checked = Array.from(document.querySelectorAll('.tag-select-cb:checked'));
+    if (checked.length === 0) return alert('Select tags to delete.');
+
+    const tags = checked.map(cb => cb.dataset.tag);
+    if (!confirm(`Delete these tags from all papers?\n${tags.join(', ')}`)) return;
+
+    for (const tag of tags) {
+        await fetch('/api/tags/delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tag })
+        });
+    }
+    alert('Tags deleted.');
+    refreshTagManagement();
+}
+
+async function suggestTagMerges() {
+    const el = document.getElementById('tag-suggestions');
+    el.className = 'result-box visible info';
+    el.textContent = 'Analysing tags with AI...';
+
+    try {
+        const resp = await fetch('/api/ai/suggest-tag-merges', { method: 'POST' });
+        const data = await resp.json();
+
+        if (!data.success) {
+            el.className = 'result-box visible error';
+            el.textContent = 'Error: ' + (data.error || 'Unknown');
+            return;
+        }
+
+        if (data.suggestions.length === 0) {
+            el.className = 'result-box visible success';
+            el.textContent = 'No merge suggestions — tags look clean.';
+            return;
+        }
+
+        let html = '<strong>Suggested merges:</strong><br>';
+        for (const s of data.suggestions) {
+            const tagsJson = JSON.stringify(s.tags).replace(/'/g, "\\'");
+            html += `<div style="margin:0.5rem 0;padding:0.5rem;background:var(--bg);border-radius:var(--radius)">`;
+            html += `${s.tags.map(t => `<span class="tag">${esc(t)}</span>`).join(' + ')} → <span class="tag" style="font-weight:600">${esc(s.suggested)}</span>`;
+            html += `<br><small>${esc(s.reason)}</small>`;
+            html += ` <button onclick="applyMergeSuggestion(${esc(tagsJson)}, '${esc(s.suggested)}')" style="padding:0.15rem 0.5rem;font-size:0.8rem">Apply</button>`;
+            html += '</div>';
+        }
+
+        el.className = 'result-box visible success';
+        el.innerHTML = html;
+    } catch (err) {
+        el.className = 'result-box visible error';
+        el.textContent = 'Error: ' + err.message;
+    }
+}
+
+async function applyMergeSuggestion(tags, target) {
+    try {
+        const resp = await fetch('/api/tags/merge', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tags, target })
+        });
+        const data = await resp.json();
+        if (data.success) {
+            alert(`Merged: ${data.updated} papers updated.`);
+            refreshTagManagement();
+        }
+    } catch (err) { alert('Error: ' + err.message); }
 }
 
 
@@ -817,6 +1020,18 @@ async function saveModels() {
 
 
 // --- Utility ---
+
+function paperDisplayTitle(p) {
+    if (p.title) return p.title;
+    // Fallback: show original filename (sans extension) or pdf_filename
+    if (p.original_filename) {
+        return p.original_filename.replace(/\.pdf$/i, '');
+    }
+    if (p.pdf_filename) {
+        return p.pdf_filename.replace(/\.pdf$/i, '');
+    }
+    return p.id;
+}
 
 function esc(str) {
     if (str === null || str === undefined) return '';

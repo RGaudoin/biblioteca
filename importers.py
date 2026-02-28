@@ -601,6 +601,44 @@ def import_links_file(file_path):
 
 # --- Reading list import ---
 
+def _apply_reading_list_metadata(paper_id, section_title, ref_notes, collection_title):
+    """Apply topics and notes from a reading list to a paper's metadata.
+
+    Adds section title as a topic and appends per-paper notes with a source marker.
+    """
+    from papers import save_paper
+
+    paper = load_paper(paper_id)
+    if paper is None:
+        return
+
+    changed = False
+
+    # Add section title as topic (case-insensitive dedup)
+    topic = section_title.strip()
+    if topic:
+        existing_topics = paper.get("topics", [])
+        if not any(t.lower() == topic.lower() for t in existing_topics):
+            existing_topics.append(topic)
+            paper["topics"] = existing_topics
+            changed = True
+
+    # Merge notes with source marker
+    if ref_notes:
+        existing_notes = paper.get("notes") or ""
+        marker = f"--- From {collection_title} ---"
+        if marker not in existing_notes:
+            if existing_notes:
+                new_notes = f"{existing_notes}\n\n{marker}\n{ref_notes}"
+            else:
+                new_notes = f"{marker}\n{ref_notes}"
+            paper["notes"] = new_notes
+            changed = True
+
+    if changed:
+        save_paper(paper)
+
+
 def import_reading_list(file_path):
     """Import a reading list / notes file as a structured collection using AI.
 
@@ -691,6 +729,7 @@ def import_reading_list(file_path):
                         "notes": notes,
                     })
                     matched.append(matched_id)
+                    _apply_reading_list_metadata(matched_id, section["title"], notes, coll_title)
                     continue
 
             # Unmatched — create a stub paper
@@ -703,7 +742,6 @@ def import_reading_list(file_path):
                 pdf_filename=None,
                 title=stub_title,
                 url=stub_url,
-                notes=notes,
                 import_source="reading-list",
             )
 
@@ -712,6 +750,7 @@ def import_reading_list(file_path):
                 "notes": notes,
             })
             stubs_created.append(stub_id)
+            _apply_reading_list_metadata(stub_id, section["title"], notes, coll_title)
 
         sections.append(section)
 

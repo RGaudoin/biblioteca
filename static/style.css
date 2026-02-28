@@ -223,6 +223,15 @@ label {
     color: #6d28d9;
 }
 
+.tag.clickable {
+    cursor: pointer;
+    transition: opacity 0.15s;
+}
+
+.tag.clickable:hover {
+    opacity: 0.7;
+}
+
 .badge-pdf {
     display: inline-block;
     background: var(--success);
@@ -243,6 +252,23 @@ label {
     font-size: 0.7rem;
     font-weight: 600;
     vertical-align: middle;
+}
+
+.badge-new {
+    display: inline-block;
+    background: var(--accent);
+    color: white;
+    padding: 0 0.3rem;
+    border-radius: 3px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    vertical-align: middle;
+}
+
+.paper-title.unprocessed,
+h2.unprocessed {
+    font-style: italic;
+    opacity: 0.7;
 }
 
 /* Modal */

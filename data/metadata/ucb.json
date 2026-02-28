@@ -1,12 +1,20 @@
 {
   "id": "ucb",
-  "title": null,
-  "authors": [],
-  "year": null,
-  "source": null,
-  "tags": [],
+  "title": "Multi-armed Bandits",
+  "authors": [
+    "A. J. Ganesh"
+  ],
+  "year": 2019,
+  "source": "Lecture notes",
+  "tags": [
+    "multi-armed bandits",
+    "ucb algorithm",
+    "regret analysis",
+    "bernoulli bandits",
+    "online learning"
+  ],
   "topics": [],
-  "summary": null,
+  "summary": "These lecture notes present the Upper Confidence Bound (UCB) algorithm for solving the multi-armed bandit problem with Bernoulli rewards. The paper provides a formal analysis of the UCB algorithm, proves that it achieves logarithmic regret in T (the number of rounds), and demonstrates that this approach is superior to naive certainty equivalence strategies which suffer linear regret.",
   "notes": null,
   "private": false,
   "added": "2026-02-26",
@@ -16,5 +24,6 @@
   "doi": null,
   "import_source": "local",
   "original_filename": "ucb.pdf",
-  "pdf_hash": "8b64dc040cef8f16a28f1cca1d3dd64e98b6e0adcd21755c35a98412c413f06f"
+  "pdf_hash": "8b64dc040cef8f16a28f1cca1d3dd64e98b6e0adcd21755c35a98412c413f06f",
+  "summary_model": "claude-haiku-4-5-20251001"
 }

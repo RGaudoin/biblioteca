@@ -311,3 +311,74 @@ File content:
         traceback.print_exc()
 
     return None
+
+
+def suggest_tag_merges(tags_with_counts, config=None):
+    """Use Claude to suggest tag consolidations based on near-duplicates and synonyms.
+
+    Args:
+        tags_with_counts: dict mapping tag name to paper count.
+        config: Config dict (loaded if None).
+
+    Returns list of dicts: [{"tags": ["tag1", "tag2"], "suggested": "target", "reason": "..."}]
+    """
+    if config is None:
+        config = load_config()
+
+    api_key = get_api_key(config)
+    if not api_key:
+        return []
+
+    try:
+        import anthropic
+    except ImportError:
+        return []
+
+    model = config.get("extraction_model", "claude-haiku-4-5-20251001")
+
+    tags_str = "\n".join(f"  {tag} ({count} papers)" for tag, count in tags_with_counts.items())
+
+    prompt = f"""Analyse these tags from an academic paper library and suggest merges for near-duplicates, synonyms, or tags that should be consolidated.
+
+Tags:
+{tags_str}
+
+Return ONLY valid JSON — a list of merge suggestions:
+[
+  {{
+    "tags": ["tag1", "tag2"],
+    "suggested": "preferred-tag-name",
+    "reason": "brief explanation"
+  }}
+]
+
+Rules:
+- Only suggest merges where tags genuinely overlap in meaning
+- Prefer the tag with the higher paper count as the target
+- Use lowercase, hyphenated form for suggested names
+- If no merges are needed, return an empty list []"""
+
+    try:
+        client = anthropic.Anthropic(api_key=api_key)
+        response = client.messages.create(
+            model=model,
+            max_tokens=1024,
+            messages=[{"role": "user", "content": prompt}],
+        )
+
+        _track_usage(
+            config,
+            response.usage.input_tokens,
+            response.usage.output_tokens,
+        )
+
+        response_text = response.content[0].text
+        json_match = re.search(r"\[[\s\S]*\]", response_text)
+        if json_match:
+            return json.loads(json_match.group())
+
+    except Exception:
+        import traceback
+        traceback.print_exc()
+
+    return []

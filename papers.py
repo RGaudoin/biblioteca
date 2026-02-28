@@ -316,6 +316,57 @@ def get_all_topics():
     return dict(sorted(topic_counts.items()))
 
 
+def rename_tag(old_tag, new_tag):
+    """Rename a tag across all papers. Returns count of papers updated."""
+    papers = list_papers()
+    count = 0
+    for p in papers:
+        tags = p.get("tags", [])
+        if old_tag in tags:
+            tags = [new_tag if t == old_tag else t for t in tags]
+            # Deduplicate (in case new_tag already existed)
+            seen = set()
+            deduped = []
+            for t in tags:
+                if t.lower() not in seen:
+                    seen.add(t.lower())
+                    deduped.append(t)
+            p["tags"] = deduped
+            save_paper(p)
+            count += 1
+    return count
+
+
+def merge_tags(source_tags, target_tag):
+    """Merge multiple tags into target_tag. Returns count of papers updated."""
+    papers = list_papers()
+    count = 0
+    source_set = {t.lower() for t in source_tags}
+    for p in papers:
+        tags = p.get("tags", [])
+        if any(t.lower() in source_set for t in tags):
+            new_tags = [t for t in tags if t.lower() not in source_set]
+            if not any(t.lower() == target_tag.lower() for t in new_tags):
+                new_tags.append(target_tag)
+            p["tags"] = new_tags
+            save_paper(p)
+            count += 1
+    return count
+
+
+def delete_tag(tag):
+    """Remove a tag from all papers. Returns count of papers updated."""
+    papers = list_papers()
+    count = 0
+    for p in papers:
+        tags = p.get("tags", [])
+        if tag in tags:
+            p["tags"] = [t for t in tags if t != tag]
+            save_paper(p)
+            count += 1
+    return count
+
+
 # --- Collections ---
 
 def _collection_path(collection_id):
