@@ -13,6 +13,7 @@ function showSection(sectionId) {
 
     if (sectionId === 'library') refreshLibrary();
     if (sectionId === 'collections') refreshCollections();
+    if (sectionId === 'topics') refreshTopicManagement();
     if (sectionId === 'tags') refreshTagManagement();
     if (sectionId === 'settings') loadSettings();
 }
@@ -637,6 +638,7 @@ async function handleEmailImport(e) {
 
 async function refreshCollections() {
     document.getElementById('collection-detail').style.display = 'none';
+    document.getElementById('collections-list').style.display = '';
     try {
         const resp = await fetch('/api/collections');
         const colls = await resp.json();
@@ -759,7 +761,7 @@ async function applyCollectionTopics(collId) {
         const data = await resp.json();
         if (data.success) {
             alert(`Topics and notes applied to ${data.updated.length} papers.`);
-            refreshLibrary();
+            openCollection(collId);
         } else {
             alert('Error: ' + (data.error || 'Unknown'));
         }
@@ -780,6 +782,122 @@ async function deleteCollection(collId) {
     } catch (err) {
         alert('Error: ' + err.message);
     }
+}
+
+
+// --- Topic Management ---
+
+async function refreshTopicManagement() {
+    try {
+        const resp = await fetch('/api/topics');
+        const topics = await resp.json();
+        const container = document.getElementById('topics-list');
+
+        if (Object.keys(topics).length === 0) {
+            container.innerHTML = '<div class="empty-state"><p>No topics yet. Import a reading list or add topics manually.</p></div>';
+            return;
+        }
+
+        let html = '<div style="margin-bottom:0.75rem">';
+        html += '<button onclick="mergeSelectedTopics()">Merge Selected</button> ';
+        html += '<button onclick="deleteSelectedTopics()" style="color:var(--error)">Delete Selected</button>';
+        html += '</div>';
+
+        for (const [topic, count] of Object.entries(topics)) {
+            html += `<div class="paper-card" style="padding:0.4rem 0.75rem">
+                <label style="display:flex;align-items:center;gap:0.75rem;cursor:pointer;font-weight:normal">
+                    <input type="checkbox" class="topic-select-cb" data-topic="${esc(topic)}">
+                    <span class="tag clickable" onclick="event.preventDefault(); filterByTopic('${esc(topic)}')">${esc(topic)}</span>
+                    <span class="paper-meta">${count} paper${count !== 1 ? 's' : ''}</span>
+                    <span style="margin-left:auto">
+                        <button onclick="event.preventDefault(); renameTopic('${esc(topic)}')" style="padding:0.2rem 0.5rem;font-size:0.8rem">Rename</button>
+                        <button onclick="event.preventDefault(); deleteSingleTopic('${esc(topic)}')" style="padding:0.2rem 0.5rem;font-size:0.8rem;color:var(--error)">Delete</button>
+                    </span>
+                </label>
+            </div>`;
+        }
+        container.innerHTML = html;
+    } catch (err) {
+        console.error('Failed to load topics:', err);
+    }
+}
+
+async function renameTopic(oldTopic) {
+    const newTopic = prompt(`Rename "${oldTopic}" to:`, oldTopic);
+    if (!newTopic || newTopic === oldTopic) return;
+
+    try {
+        const resp = await fetch('/api/topics/rename', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ old_topic: oldTopic, new_topic: newTopic })
+        });
+        const data = await resp.json();
+        if (data.success) {
+            alert(`Renamed: ${data.updated} papers updated.`);
+            refreshTopicManagement();
+        }
+    } catch (err) { alert('Error: ' + err.message); }
+}
+
+async function mergeSelectedTopics() {
+    const checked = Array.from(document.querySelectorAll('.topic-select-cb:checked'));
+    if (checked.length < 2) return alert('Select at least 2 topics to merge.');
+
+    const topics = checked.map(cb => cb.dataset.topic);
+    const target = prompt(`Merge these topics into one:\n${topics.join(', ')}\n\nTarget topic name:`, topics[0]);
+    if (!target) return;
+
+    try {
+        const resp = await fetch('/api/topics/merge', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ topics, target })
+        });
+        const data = await resp.json();
+        if (data.success) {
+            alert(`Merged: ${data.updated} papers updated.`);
+            refreshTopicManagement();
+        }
+    } catch (err) { alert('Error: ' + err.message); }
+}
+
+async function deleteSelectedTopics() {
+    const checked = Array.from(document.querySelectorAll('.topic-select-cb:checked'));
+    if (checked.length === 0) return alert('Select topics to delete.');
+
+    const topics = checked.map(cb => cb.dataset.topic);
+    if (!confirm(`Delete these topics from all papers?\n${topics.join(', ')}`)) return;
+
+    for (const topic of topics) {
+        await fetch('/api/topics/delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ topic })
+        });
+    }
+    alert('Topics deleted.');
+    refreshTopicManagement();
+}
+
+async function deleteSingleTopic(topic) {
+    if (!confirm(`Delete topic "${topic}" from all papers?`)) return;
+    try {
+        await fetch('/api/topics/delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ topic })
+        });
+        refreshTopicManagement();
+    } catch (err) { alert('Error: ' + err.message); }
+}
+
+function addTopicManual() {
+    const name = prompt('Topic name:');
+    if (!name) return;
+    // Adding a topic manually means we just note it — it only exists on papers.
+    // So prompt user to go to library and assign it to papers.
+    alert(`Topic "${name}" noted. Assign it to papers from the paper detail view, or use "Add to topic" from the library.`);
 }
 
 

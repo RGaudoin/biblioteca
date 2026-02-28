@@ -129,6 +129,44 @@ def api_topics():
     return jsonify(get_all_topics())
 
 
+@app.route("/api/topics/rename", methods=["POST"])
+def api_rename_topic():
+    data = request.json or {}
+    old_topic = data.get("old_topic", "").strip()
+    new_topic = data.get("new_topic", "").strip()
+    if not old_topic or not new_topic:
+        return jsonify({"success": False, "error": "Both old_topic and new_topic are required"}), 400
+
+    from papers import rename_topic
+    count = rename_topic(old_topic, new_topic)
+    return jsonify({"success": True, "updated": count})
+
+
+@app.route("/api/topics/merge", methods=["POST"])
+def api_merge_topics():
+    data = request.json or {}
+    topics_to_merge = data.get("topics", [])
+    target_topic = data.get("target", "").strip()
+    if len(topics_to_merge) < 1 or not target_topic:
+        return jsonify({"success": False, "error": "Provide topics list and target"}), 400
+
+    from papers import merge_topics
+    count = merge_topics(topics_to_merge, target_topic)
+    return jsonify({"success": True, "updated": count})
+
+
+@app.route("/api/topics/delete", methods=["POST"])
+def api_delete_topic():
+    data = request.json or {}
+    topic = data.get("topic", "").strip()
+    if not topic:
+        return jsonify({"success": False, "error": "Topic is required"}), 400
+
+    from papers import delete_topic
+    count = delete_topic(topic)
+    return jsonify({"success": True, "updated": count})
+
+
 @app.route("/api/tags/rename", methods=["POST"])
 def api_rename_tag():
     """Rename a tag across all papers."""

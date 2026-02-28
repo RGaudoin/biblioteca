@@ -367,6 +367,56 @@ def delete_tag(tag):
     return count
 
 
+def rename_topic(old_topic, new_topic):
+    """Rename a topic across all papers. Returns count of papers updated."""
+    papers = list_papers()
+    count = 0
+    for p in papers:
+        topics = p.get("topics", [])
+        if any(t.lower() == old_topic.lower() for t in topics):
+            topics = [new_topic if t.lower() == old_topic.lower() else t for t in topics]
+            seen = set()
+            deduped = []
+            for t in topics:
+                if t.lower() not in seen:
+                    seen.add(t.lower())
+                    deduped.append(t)
+            p["topics"] = deduped
+            save_paper(p)
+            count += 1
+    return count
+
+
+def merge_topics(source_topics, target_topic):
+    """Merge multiple topics into target_topic. Returns count of papers updated."""
+    papers = list_papers()
+    count = 0
+    source_set = {t.lower() for t in source_topics}
+    for p in papers:
+        topics = p.get("topics", [])
+        if any(t.lower() in source_set for t in topics):
+            new_topics = [t for t in topics if t.lower() not in source_set]
+            if not any(t.lower() == target_topic.lower() for t in new_topics):
+                new_topics.append(target_topic)
+            p["topics"] = new_topics
+            save_paper(p)
+            count += 1
+    return count
+
+
+def delete_topic(topic):
+    """Remove a topic from all papers. Returns count of papers updated."""
+    papers = list_papers()
+    count = 0
+    for p in papers:
+        topics = p.get("topics", [])
+        if any(t.lower() == topic.lower() for t in topics):
+            p["topics"] = [t for t in topics if t.lower() != topic.lower()]
+            save_paper(p)
+            count += 1
+    return count
+
+
 # --- Collections ---
 
 def _collection_path(collection_id):
