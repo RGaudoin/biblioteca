@@ -3,6 +3,7 @@ Flask web application for Biblioteca — paper library.
 """
 
 import os
+from datetime import date
 
 from flask import Flask, jsonify, render_template, request, send_from_directory
 
@@ -609,6 +610,19 @@ def api_update_config():
     response_config = {k: v for k, v in config.items() if k != "claude_api_key"}
     response_config["hasApiKey"] = bool(get_api_key(config))
     return jsonify({"success": True, "config": response_config})
+
+
+@app.route("/api/config/reset-usage", methods=["POST"])
+def api_reset_usage():
+    config = load_config()
+    config["api_usage"] = {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "by_model": {},
+        "reset_date": date.today().isoformat(),
+    }
+    save_config(config)
+    return jsonify({"success": True, "api_usage": config["api_usage"]})
 
 
 @app.route("/api/config/test-api-key", methods=["POST"])

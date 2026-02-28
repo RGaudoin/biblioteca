@@ -53,11 +53,18 @@ def _get_pdf_metadata(pdf_path):
         return {}
 
 
-def _track_usage(config, input_tokens, output_tokens):
-    """Track API token usage in config."""
+def _track_usage(config, input_tokens, output_tokens, model=None):
+    """Track API token usage in config, split by model."""
     usage = config.get("api_usage", {"input_tokens": 0, "output_tokens": 0})
     usage["input_tokens"] = usage.get("input_tokens", 0) + input_tokens
     usage["output_tokens"] = usage.get("output_tokens", 0) + output_tokens
+    if model:
+        by_model = usage.get("by_model", {})
+        m = by_model.get(model, {"input_tokens": 0, "output_tokens": 0})
+        m["input_tokens"] = m.get("input_tokens", 0) + input_tokens
+        m["output_tokens"] = m.get("output_tokens", 0) + output_tokens
+        by_model[model] = m
+        usage["by_model"] = by_model
     config["api_usage"] = usage
     save_config(config)
 
@@ -123,6 +130,7 @@ Paper text:
             config,
             response.usage.input_tokens,
             response.usage.output_tokens,
+            model=model,
         )
 
         # Parse response — extract JSON from the response text
@@ -198,6 +206,7 @@ Paper text:
             config,
             response.usage.input_tokens,
             response.usage.output_tokens,
+            model=model,
         )
 
         return {"summary": response.content[0].text.strip(), "model": model}
@@ -299,6 +308,7 @@ File content:
             config,
             response.usage.input_tokens,
             response.usage.output_tokens,
+            model=model,
         )
 
         response_text = response.content[0].text
@@ -370,6 +380,7 @@ Rules:
             config,
             response.usage.input_tokens,
             response.usage.output_tokens,
+            model=model,
         )
 
         response_text = response.content[0].text

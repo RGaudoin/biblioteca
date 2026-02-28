@@ -474,6 +474,28 @@ h2.unprocessed {
     margin-bottom: 0.5rem;
 }
 
+.usage-table {
+    border-collapse: collapse;
+    margin: 0.5rem 0;
+    font-size: 0.9rem;
+}
+
+.usage-table th, .usage-table td {
+    padding: 0.25rem 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+}
+
+.usage-table th {
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.usage-table td:nth-child(2), .usage-table td:nth-child(3),
+.usage-table th:nth-child(2), .usage-table th:nth-child(3) {
+    text-align: right;
+}
+
 /* Collections */
 
 .collection-card {

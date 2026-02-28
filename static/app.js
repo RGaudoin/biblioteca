@@ -950,8 +950,21 @@ async function loadSettings() {
         document.getElementById('summary-model').value = config.summary_model || '';
 
         const usage = config.api_usage || {};
-        document.getElementById('usage-stats').textContent =
-            `Input tokens: ${(usage.input_tokens || 0).toLocaleString()} · Output tokens: ${(usage.output_tokens || 0).toLocaleString()}`;
+        let usageHtml = `<p><strong>Total:</strong> ${(usage.input_tokens || 0).toLocaleString()} input · ${(usage.output_tokens || 0).toLocaleString()} output</p>`;
+        const byModel = usage.by_model || {};
+        const models = Object.keys(byModel);
+        if (models.length > 0) {
+            usageHtml += '<table class="usage-table"><tr><th>Model</th><th>Input</th><th>Output</th></tr>';
+            for (const m of models.sort()) {
+                const mu = byModel[m];
+                usageHtml += `<tr><td>${m}</td><td>${(mu.input_tokens || 0).toLocaleString()}</td><td>${(mu.output_tokens || 0).toLocaleString()}</td></tr>`;
+            }
+            usageHtml += '</table>';
+        }
+        if (usage.reset_date) {
+            usageHtml += `<p style="color:var(--text-secondary); font-size:0.85rem">Since reset on ${usage.reset_date}</p>`;
+        }
+        document.getElementById('usage-stats').innerHTML = usageHtml;
     } catch (err) {
         console.error('Failed to load settings:', err);
     }
@@ -995,6 +1008,16 @@ async function clearApiKey() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ claude_api_key: '' })
         });
+        loadSettings();
+    } catch (err) {
+        alert('Error: ' + err.message);
+    }
+}
+
+async function resetUsage() {
+    if (!confirm('Reset API usage counters?')) return;
+    try {
+        await fetch('/api/config/reset-usage', { method: 'POST' });
         loadSettings();
     } catch (err) {
         alert('Error: ' + err.message);
