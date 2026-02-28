@@ -393,3 +393,183 @@ Rules:
         traceback.print_exc()
 
     return []
+
+
+def suggest_topics(pdf_path, all_existing_topics, current_topics=None, config=None):
+    """Suggest topics for a paper — existing or new.
+
+    Args:
+        pdf_path: Path to the PDF file.
+        all_existing_topics: List of dicts with 'name' and optionally 'description'.
+        current_topics: List of topic names already assigned to this paper.
+        config: Config dict (loaded if None).
+
+    Returns list of topic name strings. Existing topics use their canonical name.
+    New suggestions are returned as-is.
+    """
+    if config is None:
+        config = load_config()
+
+    api_key = get_api_key(config)
+    if not api_key:
+        return []
+
+    text = _extract_text_from_pdf(pdf_path)
+    if not text:
+        return []
+
+    if len(text) > 15000:
+        text = text[:15000] + "\n[... truncated ...]"
+
+    try:
+        import anthropic
+    except ImportError:
+        return []
+
+    model = config.get("extraction_model", "claude-haiku-4-5-20251001")
+
+    if all_existing_topics:
+        topics_str = "\n".join(
+            f"  - {t['name']}" + (f": {t['description']}" if t.get("description") else "")
+            for t in all_existing_topics
+        )
+        existing_block = f"""Existing topics (use the EXACT name if one fits):
+{topics_str}"""
+    else:
+        existing_block = "No existing topics yet."
+
+    prompt = f"""Given this academic paper text, suggest which topics it belongs to.
+Prefer existing topics from the list below where relevant — use their EXACT names.
+You may also suggest new topic names if none of the existing ones fit well.
+Return ONLY a JSON list of topic name strings. If nothing fits, return [].
+
+{existing_block}
+
+Paper text:
+{text}"""
+
+    try:
+        client = anthropic.Anthropic(api_key=api_key)
+        response = client.messages.create(
+            model=model,
+            max_tokens=512,
+            messages=[{"role": "user", "content": prompt}],
+        )
+
+        _track_usage(
+            config,
+            response.usage.input_tokens,
+            response.usage.output_tokens,
+            model=model,
+        )
+
+        response_text = response.content[0].text
+        json_match = re.search(r"\[[\s\S]*\]", response_text)
+        if json_match:
+            suggested = json.loads(json_match.group())
+            existing_by_name = {t["name"].lower(): t["name"] for t in all_existing_topics}
+            current_lower = {t.lower() for t in (current_topics or [])}
+
+            results = []
+            for s in suggested:
+                sl = s.lower()
+                # Map to existing topic name (exact or fuzzy substring match)
+                canonical = None
+                if sl in existing_by_name:
+                    canonical = existing_by_name[sl]
+                else:
+                    for el, en in existing_by_name.items():
+                        if sl in el or el in sl:
+                            canonical = en
+                            break
+
+                name = canonical or s
+                # Skip if already assigned to this paper
+                if name.lower() in current_lower:
+                    continue
+                if name not in results:
+                    results.append(name)
+            return results
+
+    except Exception:
+        import traceback
+        traceback.print_exc()
+
+    return []
+
+
+def suggest_unifying_topics(paper_summaries, existing_topics, config=None):
+    """Suggest topics for a group of papers.
+
+    Args:
+        paper_summaries: List of dicts with 'title', 'summary', 'tags' for each paper.
+        existing_topics: List of dicts with 'name' and optionally 'description'.
+        config: Config dict (loaded if None).
+
+    Returns list of dicts: [{"name": "...", "description": "...", "existing": bool}]
+    """
+    if config is None:
+        config = load_config()
+
+    api_key = get_api_key(config)
+    if not api_key:
+        return []
+
+    try:
+        import anthropic
+    except ImportError:
+        return []
+
+    model = config.get("extraction_model", "claude-haiku-4-5-20251001")
+
+    papers_str = "\n".join(
+        f"  - {p.get('title', 'Untitled')}"
+        + (f" — {p['summary'][:200]}" if p.get("summary") else "")
+        + (f" [tags: {', '.join(p['tags'])}]" if p.get("tags") else "")
+        for p in paper_summaries
+    )
+
+    existing_str = "\n".join(
+        f"  - {t['name']}" + (f": {t['description']}" if t.get("description") else "")
+        for t in existing_topics
+    ) if existing_topics else "  (none)"
+
+    prompt = f"""Given these papers, suggest one or more topics they belong to.
+Prefer existing topics from the list below where relevant — use their EXACT names.
+You may also suggest new topic names if none of the existing ones fit.
+Only suggest topics that are genuinely relevant.
+
+Papers:
+{papers_str}
+
+Existing topics:
+{existing_str}
+
+Return ONLY a JSON list:
+[{{"name": "Topic Name", "description": "One sentence description", "existing": true/false}}]"""
+
+    try:
+        client = anthropic.Anthropic(api_key=api_key)
+        response = client.messages.create(
+            model=model,
+            max_tokens=512,
+            messages=[{"role": "user", "content": prompt}],
+        )
+
+        _track_usage(
+            config,
+            response.usage.input_tokens,
+            response.usage.output_tokens,
+            model=model,
+        )
+
+        response_text = response.content[0].text
+        json_match = re.search(r"\[[\s\S]*\]", response_text)
+        if json_match:
+            return json.loads(json_match.group())
+
+    except Exception:
+        import traceback
+        traceback.print_exc()
+
+    return []

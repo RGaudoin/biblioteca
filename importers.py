@@ -622,6 +622,10 @@ def _apply_reading_list_metadata(paper_id, section_title, ref_notes, collection_
             existing_topics.append(topic)
             paper["topics"] = existing_topics
             changed = True
+        # Ensure topic entity exists
+        from papers import find_topic_by_name, create_topic
+        if not find_topic_by_name(topic):
+            create_topic(topic)
 
     # Merge notes with source marker
     if ref_notes:

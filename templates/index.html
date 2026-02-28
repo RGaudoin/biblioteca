@@ -31,7 +31,14 @@
                     <option value="">All topics</option>
                 </select>
                 <button id="bulk-extract-btn" onclick="bulkExtract()" style="display:none">Extract Missing Metadata (AI)</button>
+                <button id="assign-topic-btn" onclick="togglePaperSelection()">Add to Topic</button>
                 <span id="paper-count" class="count-badge"></span>
+                <div id="selection-actions" style="display:none;align-items:center;gap:0.5rem">
+                    <span id="selected-count">0 selected</span>
+                    <button onclick="assignSelectedToTopic()">Assign to Topic</button>
+                    <button onclick="suggestUnifyingTopic()">Suggest Topic (AI)</button>
+                    <button onclick="togglePaperSelection()">Cancel</button>
+                </div>
             </div>
             <div id="paper-list" class="paper-list"></div>
         </section>
@@ -151,11 +158,16 @@ https://example.com/paper.pdf
 
         <!-- Topics Management Section -->
         <section id="topics" class="section">
-            <h2>Topic Management</h2>
-            <div class="toolbar">
-                <button onclick="addTopicManual()">Add Topic</button>
+            <h2>Topics</h2>
+            <div id="topics-list-view">
+                <div class="toolbar">
+                    <button onclick="showCreateTopicForm()">New Topic</button>
+                    <button onclick="mergeSelectedTopics()">Merge Selected</button>
+                    <button onclick="deleteSelectedTopics()" style="color:var(--error)">Delete Selected</button>
+                </div>
+                <div id="topics-list" class="paper-list"></div>
             </div>
-            <div id="topics-list" class="paper-list"></div>
+            <div id="topic-detail" class="collection-detail" style="display:none"></div>
         </section>
 
         <!-- Tags Management Section -->

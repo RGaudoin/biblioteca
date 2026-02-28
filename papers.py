@@ -16,6 +16,7 @@ DATA_DIR = SCRIPT_DIR / "data"
 PAPERS_DIR = DATA_DIR / "papers"
 METADATA_DIR = DATA_DIR / "metadata"
 COLLECTIONS_DIR = DATA_DIR / "collections"
+TOPICS_DIR = DATA_DIR / "topics"
 PRIVATE_DIR = DATA_DIR / "private"
 CONFIG_FILE = DATA_DIR / "config.json"
 
@@ -32,7 +33,7 @@ DEFAULT_CONFIG = {
 
 def _ensure_dirs():
     """Create data directories if they don't exist."""
-    for d in [PAPERS_DIR, METADATA_DIR, COLLECTIONS_DIR, PRIVATE_DIR]:
+    for d in [PAPERS_DIR, METADATA_DIR, COLLECTIONS_DIR, TOPICS_DIR, PRIVATE_DIR]:
         d.mkdir(parents=True, exist_ok=True)
 
 
@@ -307,13 +308,40 @@ def get_all_tags():
 
 
 def get_all_topics():
-    """Get all topics with paper counts."""
+    """Get all topics with paper counts and entity metadata.
+
+    Returns dict mapping topic name to info dict:
+    {name: {"count": N, "description": "...", "id": "slug", "registered": bool}}
+    """
     papers = list_papers()
     topic_counts = {}
     for p in papers:
         for topic in p.get("topics", []):
             topic_counts[topic] = topic_counts.get(topic, 0) + 1
-    return dict(sorted(topic_counts.items()))
+
+    entities_by_name = {}
+    for t in list_topic_entities():
+        entities_by_name[t["name"].lower()] = t
+
+    result = {}
+    for name, count in sorted(topic_counts.items()):
+        entity = entities_by_name.pop(name.lower(), None)
+        result[name] = {
+            "count": count,
+            "description": entity["description"] if entity else None,
+            "id": entity["id"] if entity else None,
+            "registered": entity is not None,
+        }
+    # Topic entities with no papers assigned yet
+    for name_lower, entity in entities_by_name.items():
+        result[entity["name"]] = {
+            "count": 0,
+            "description": entity["description"],
+            "id": entity["id"],
+            "registered": True,
+        }
+
+    return dict(sorted(result.items(), key=lambda x: x[0].lower()))
 
 
 def rename_tag(old_tag, new_tag):
@@ -324,7 +352,6 @@ def rename_tag(old_tag, new_tag):
         tags = p.get("tags", [])
         if old_tag in tags:
             tags = [new_tag if t == old_tag else t for t in tags]
-            # Deduplicate (in case new_tag already existed)
             seen = set()
             deduped = []
             for t in tags:
@@ -368,7 +395,7 @@ def delete_tag(tag):
 
 
 def rename_topic(old_topic, new_topic):
-    """Rename a topic across all papers. Returns count of papers updated."""
+    """Rename a topic across all papers and its entity file. Returns count of papers updated."""
     papers = list_papers()
     count = 0
     for p in papers:
@@ -384,6 +411,12 @@ def rename_topic(old_topic, new_topic):
             p["topics"] = deduped
             save_paper(p)
             count += 1
+    # Also rename topic entity
+    entity = find_topic_by_name(old_topic)
+    if entity:
+        desc = entity.get("description")
+        delete_topic_entity(entity["id"])
+        create_topic(new_topic, description=desc)
     return count
 
 
@@ -401,11 +434,21 @@ def merge_topics(source_topics, target_topic):
             p["topics"] = new_topics
             save_paper(p)
             count += 1
+    # Merge topic entities: keep target, delete sources
+    target_entity = find_topic_by_name(target_topic)
+    for source in source_topics:
+        source_entity = find_topic_by_name(source)
+        if source_entity:
+            if not target_entity and source_entity.get("description"):
+                target_entity = create_topic(target_topic, description=source_entity["description"])
+            delete_topic_entity(source_entity["id"])
+    if not target_entity:
+        create_topic(target_topic)
     return count
 
 
 def delete_topic(topic):
-    """Remove a topic from all papers. Returns count of papers updated."""
+    """Remove a topic from all papers and delete its entity file. Returns count of papers updated."""
     papers = list_papers()
     count = 0
     for p in papers:
@@ -414,7 +457,109 @@ def delete_topic(topic):
             p["topics"] = [t for t in topics if t.lower() != topic.lower()]
             save_paper(p)
             count += 1
+    entity = find_topic_by_name(topic)
+    if entity:
+        delete_topic_entity(entity["id"])
     return count
+
+
+# --- Topic entities ---
+
+def _topic_path(topic_id):
+    """Get path to topic JSON file."""
+    return TOPICS_DIR / f"{topic_id}.json"
+
+
+def load_topic(topic_id):
+    """Load a topic entity by ID. Returns None if not found."""
+    path = _topic_path(topic_id)
+    if not path.exists():
+        return None
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def save_topic(topic):
+    """Save a topic entity."""
+    _ensure_dirs()
+    topic["updated"] = date.today().isoformat()
+    path = _topic_path(topic["id"])
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(topic, f, ensure_ascii=False, indent=2)
+
+
+def create_topic(name, description=None):
+    """Create a new topic entity. Returns existing if name matches (case-insensitive)."""
+    _ensure_dirs()
+    existing = find_topic_by_name(name)
+    if existing:
+        return existing
+
+    topic_id = _slugify(name)
+    base_id = topic_id
+    counter = 2
+    while _topic_path(topic_id).exists():
+        topic_id = f"{base_id}-{counter}"
+        counter += 1
+
+    topic = {
+        "id": topic_id,
+        "name": name.strip(),
+        "description": description,
+        "created": date.today().isoformat(),
+        "updated": date.today().isoformat(),
+    }
+    save_topic(topic)
+    return topic
+
+
+def delete_topic_entity(topic_id):
+    """Delete a topic JSON file. Returns True if deleted."""
+    path = _topic_path(topic_id)
+    if not path.exists():
+        return False
+    path.unlink()
+    return True
+
+
+def list_topic_entities():
+    """List all topic entities from data/topics/. Returns list of topic dicts."""
+    _ensure_dirs()
+    topics = []
+    for path in TOPICS_DIR.glob("*.json"):
+        if path.name == ".gitkeep":
+            continue
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                topics.append(json.load(f))
+        except (json.JSONDecodeError, IOError):
+            continue
+    topics.sort(key=lambda t: t.get("name", "").lower())
+    return topics
+
+
+def find_topic_by_name(name):
+    """Find a topic entity by display name (case-insensitive). Returns dict or None."""
+    name_lower = name.strip().lower()
+    for t in list_topic_entities():
+        if t["name"].lower() == name_lower:
+            return t
+    return None
+
+
+def bootstrap_topic_entities():
+    """Create topic entity files for all existing topics found on papers.
+
+    Idempotent: skips topics that already have entity files.
+    Returns list of created topic names.
+    """
+    all_topics = get_all_topics()
+    created = []
+    for name, info in all_topics.items():
+        if not info.get("registered"):
+            create_topic(name)
+            created.append(name)
+    return created
 
 
 # --- Collections ---

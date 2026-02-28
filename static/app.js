@@ -114,8 +114,12 @@ function renderPaperList(papers, total) {
         const tags = (p.tags || []).map(t => `<span class="tag clickable" onclick="event.stopPropagation(); filterByTag('${esc(t)}')">${esc(t)}</span>`).join('');
         const topics = (p.topics || []).map(t => `<span class="tag topic clickable" onclick="event.stopPropagation(); filterByTopic('${esc(t)}')">${esc(t)}</span>`).join('');
 
-        return `<div class="paper-card" onclick="openPaper('${esc(p.id)}')">
-            <div class="paper-title${titleClass}">${badge} ${esc(title)}</div>
+        const checkbox = selectionMode
+            ? `<input type="checkbox" class="paper-select-cb" data-paper-id="${esc(p.id)}" onclick="event.stopPropagation(); updateSelectionCount()" style="margin-right:0.5rem">`
+            : '';
+
+        return `<div class="paper-card" onclick="${selectionMode ? '' : "openPaper('" + esc(p.id) + "')"}" style="${selectionMode ? 'cursor:default' : ''}">
+            <div class="paper-title${titleClass}">${checkbox}${badge} ${esc(title)}</div>
             <div class="paper-meta">${esc(meta)}</div>
             ${(tags || topics) ? `<div class="paper-tags">${tags}${topics}</div>` : ''}
         </div>`;
@@ -141,8 +145,8 @@ async function loadFilters() {
         const topicSelect = document.getElementById('topic-filter');
         const currentTopic = topicSelect.value;
         topicSelect.innerHTML = '<option value="">All topics</option>' +
-            Object.entries(topics).map(([t, c]) =>
-                `<option value="${esc(t)}"${t === currentTopic ? ' selected' : ''}>${esc(t)} (${c})</option>`
+            Object.entries(topics).map(([t, info]) =>
+                `<option value="${esc(t)}"${t === currentTopic ? ' selected' : ''}>${esc(t)} (${info.count})</option>`
             ).join('');
     } catch (err) {
         console.error('Failed to load filters:', err);
@@ -228,7 +232,8 @@ function renderPaperModal(p) {
         : '';
     const aiBtn = p.pdf_filename
         ? `<button onclick="extractMetadata('${esc(p.id)}')">Extract Metadata (AI)</button>
-           <button onclick="summarisePaper('${esc(p.id)}')">Summarise (AI)</button>`
+           <button onclick="summarisePaper('${esc(p.id)}')">Summarise (AI)</button>
+           <button onclick="suggestTopics('${esc(p.id)}')">Suggest Topics (AI)</button>`
         : '';
 
     document.getElementById('modal-body').innerHTML = `
@@ -280,6 +285,60 @@ async function summarisePaper(paperId) {
     } catch (err) {
         alert('Error: ' + err.message);
     }
+}
+
+async function suggestTopics(paperId) {
+    showModalLoading('Analysing paper for topic suggestions...');
+    try {
+        const resp = await fetch(`/api/ai/suggest-topics/${paperId}`, { method: 'POST' });
+        const data = await resp.json();
+        if (!data.success) {
+            alert('Error: ' + (data.error || data.message || 'Unknown'));
+            openPaper(paperId);
+            return;
+        }
+        if (data.suggestions.length === 0) {
+            alert(data.message || 'No matching topics found for this paper.');
+            openPaper(paperId);
+            return;
+        }
+        // Show checkboxes in modal body
+        let html = '<h3>Suggested topics</h3>';
+        for (const t of data.suggestions) {
+            html += `<div style="margin:0.3rem 0"><label style="cursor:pointer;font-weight:normal">
+                <input type="checkbox" class="suggest-topic-cb" value="${esc(t)}" checked> ${esc(t)}
+            </label></div>`;
+        }
+        html += `<div class="modal-actions">
+            <button onclick="applyTopicSuggestions('${esc(paperId)}')">Assign Selected</button>
+            <button onclick="openPaper('${esc(paperId)}')">Cancel</button>
+        </div>`;
+        document.getElementById('modal-body').innerHTML = html;
+    } catch (err) {
+        alert('Error: ' + err.message);
+        openPaper(paperId);
+    }
+}
+
+async function applyTopicSuggestions(paperId) {
+    const checked = Array.from(document.querySelectorAll('.suggest-topic-cb:checked'));
+    if (checked.length === 0) { openPaper(paperId); return; }
+
+    const selected = checked.map(cb => cb.value);
+    const paperResp = await fetch(`/api/papers/${paperId}`);
+    const paper = await paperResp.json();
+    const newTopics = [...(paper.topics || [])];
+    for (const t of selected) {
+        if (!newTopics.some(ex => ex.toLowerCase() === t.toLowerCase())) {
+            newTopics.push(t);
+        }
+    }
+    await fetch(`/api/papers/${paperId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topics: newTopics })
+    });
+    openPaper(paperId);
 }
 
 function showModalLoading(msg) {
@@ -788,38 +847,193 @@ async function deleteCollection(collId) {
 // --- Topic Management ---
 
 async function refreshTopicManagement() {
+    document.getElementById('topic-detail').style.display = 'none';
+    document.getElementById('topics-list-view').style.display = '';
     try {
         const resp = await fetch('/api/topics');
         const topics = await resp.json();
         const container = document.getElementById('topics-list');
 
         if (Object.keys(topics).length === 0) {
-            container.innerHTML = '<div class="empty-state"><p>No topics yet. Import a reading list or add topics manually.</p></div>';
+            container.innerHTML = '<div class="empty-state"><p>No topics yet. Create one or import a reading list.</p></div>';
             return;
         }
 
-        let html = '<div style="margin-bottom:0.75rem">';
-        html += '<button onclick="mergeSelectedTopics()">Merge Selected</button> ';
-        html += '<button onclick="deleteSelectedTopics()" style="color:var(--error)">Delete Selected</button>';
-        html += '</div>';
-
-        for (const [topic, count] of Object.entries(topics)) {
-            html += `<div class="paper-card" style="padding:0.4rem 0.75rem">
-                <label style="display:flex;align-items:center;gap:0.75rem;cursor:pointer;font-weight:normal">
-                    <input type="checkbox" class="topic-select-cb" data-topic="${esc(topic)}">
-                    <span class="tag clickable" onclick="event.preventDefault(); filterByTopic('${esc(topic)}')">${esc(topic)}</span>
-                    <span class="paper-meta">${count} paper${count !== 1 ? 's' : ''}</span>
-                    <span style="margin-left:auto">
-                        <button onclick="event.preventDefault(); renameTopic('${esc(topic)}')" style="padding:0.2rem 0.5rem;font-size:0.8rem">Rename</button>
-                        <button onclick="event.preventDefault(); deleteSingleTopic('${esc(topic)}')" style="padding:0.2rem 0.5rem;font-size:0.8rem;color:var(--error)">Delete</button>
-                    </span>
-                </label>
+        let html = '';
+        for (const [name, info] of Object.entries(topics)) {
+            const regBadge = info.registered ? '' : ' <span style="opacity:0.5;font-size:0.8em">(unregistered)</span>';
+            html += `<div class="paper-card" style="padding:0.4rem 0.75rem;cursor:pointer" onclick="openTopic('${esc(info.id || '')}', '${esc(name)}')">
+                <div style="display:flex;align-items:center;gap:0.75rem" onclick="event.stopPropagation()">
+                    <input type="checkbox" class="topic-select-cb" data-topic="${esc(name)}">
+                    <span class="tag clickable" onclick="openTopic('${esc(info.id || '')}', '${esc(name)}')">${esc(name)}</span>${regBadge}
+                    <span class="paper-meta">${info.count} paper${info.count !== 1 ? 's' : ''}</span>
+                    ${info.description ? `<span class="paper-meta" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(info.description)}</span>` : ''}
+                </div>
             </div>`;
         }
         container.innerHTML = html;
     } catch (err) {
         console.error('Failed to load topics:', err);
     }
+}
+
+async function openTopic(topicId, topicName) {
+    if (!topicId) {
+        if (confirm(`"${topicName}" has no topic file yet. Create one?`)) {
+            const resp = await fetch('/api/topics/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: topicName })
+            });
+            const data = await resp.json();
+            if (data.success) topicId = data.topic.id;
+            else { alert('Error: ' + (data.error || 'Unknown')); return; }
+        } else { return; }
+    }
+
+    try {
+        const resp = await fetch(`/api/topics/${topicId}`);
+        const topic = await resp.json();
+        const detail = document.getElementById('topic-detail');
+
+        let html = `<h2>${esc(topic.name)}</h2>`;
+        if (topic.description) html += `<p>${esc(topic.description)}</p>`;
+        html += `<p class="paper-meta">Created: ${topic.created || '?'} · Updated: ${topic.updated || '?'}</p>`;
+        html += `<div style="margin:0.75rem 0">
+            <button onclick="editTopicDescription('${esc(topicId)}')">Edit Description</button>
+        </div>`;
+
+        const papers = topic.papers || [];
+        html += `<h3>Papers (${papers.length})</h3>`;
+        html += '<div class="section-papers">';
+        for (const p of papers) {
+            const title = paperDisplayTitle(p);
+            const badge = !p.pdf_filename ? '<span class="badge-ref">REF</span> '
+                : !p.title ? '<span class="badge-new">NEW</span> '
+                : '<span class="badge-pdf">PDF</span> ';
+            html += `<div class="paper-card" style="display:flex;align-items:center;gap:0.5rem">
+                <div style="flex:1;cursor:pointer" onclick="openPaper('${esc(p.id)}')">
+                    <div class="paper-title">${badge}${esc(title)}</div>
+                    <div class="paper-meta">${esc((p.authors || []).join(', '))}${p.year ? ' (' + p.year + ')' : ''}</div>
+                </div>
+                <button onclick="event.stopPropagation(); removeFromTopic('${esc(topicId)}', '${esc(topic.name)}', '${esc(p.id)}')"
+                        style="padding:0.2rem 0.5rem;font-size:0.8rem;color:var(--error)">Remove</button>
+            </div>`;
+        }
+        html += '</div>';
+
+        html += `<div style="margin:0.75rem 0">
+            <button onclick="showAddPaperToTopic('${esc(topicId)}', '${esc(topic.name)}')">Add Papers</button>
+        </div>`;
+
+        html += `<div class="modal-actions">
+            <button onclick="refreshTopicManagement()">Back to Topics</button>
+            <button onclick="renameTopic('${esc(topic.name)}')">Rename</button>
+            <button onclick="deleteSingleTopic('${esc(topic.name)}')" style="color:var(--error)">Delete</button>
+        </div>`;
+
+        detail.innerHTML = html;
+        detail.style.display = 'block';
+        document.getElementById('topics-list-view').style.display = 'none';
+    } catch (err) {
+        console.error('Failed to load topic:', err);
+    }
+}
+
+async function showCreateTopicForm() {
+    const name = prompt('Topic name:');
+    if (!name) return;
+    const description = prompt('Description (optional):') || '';
+
+    try {
+        const resp = await fetch('/api/topics/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, description })
+        });
+        const data = await resp.json();
+        if (data.success) refreshTopicManagement();
+        else alert('Error: ' + (data.error || 'Unknown'));
+    } catch (err) { alert('Error: ' + err.message); }
+}
+
+async function editTopicDescription(topicId) {
+    const topic = await (await fetch(`/api/topics/${topicId}`)).json();
+    const newDesc = prompt('Topic description:', topic.description || '');
+    if (newDesc === null) return;
+    try {
+        const resp = await fetch(`/api/topics/${topicId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ description: newDesc })
+        });
+        const data = await resp.json();
+        if (data.success) openTopic(topicId, data.topic.name);
+    } catch (err) { alert('Error: ' + err.message); }
+}
+
+async function showAddPaperToTopic(topicId, topicName) {
+    const resp = await fetch('/api/papers?limit=500');
+    const data = await resp.json();
+    const candidates = data.papers.filter(p =>
+        !(p.topics || []).some(t => t.toLowerCase() === topicName.toLowerCase())
+    );
+
+    if (candidates.length === 0) {
+        alert('All papers are already in this topic.');
+        return;
+    }
+
+    const detail = document.getElementById('topic-detail');
+    let html = `<h3>Add papers to "${esc(topicName)}"</h3>`;
+    html += `<div style="margin-bottom:0.75rem">
+        <button onclick="addSelectedPapersToTopic('${esc(topicId)}', '${esc(topicName)}')">Add Selected</button>
+        <button onclick="openTopic('${esc(topicId)}', '${esc(topicName)}')">Cancel</button>
+    </div>`;
+
+    for (const p of candidates) {
+        const title = paperDisplayTitle(p);
+        html += `<div class="paper-card" style="padding:0.4rem 0.75rem">
+            <label style="display:flex;align-items:center;gap:0.75rem;cursor:pointer;font-weight:normal">
+                <input type="checkbox" class="add-to-topic-cb" data-paper-id="${esc(p.id)}">
+                <span>${esc(title)}</span>
+                <span class="paper-meta">${esc((p.authors || []).join(', '))}${p.year ? ' (' + p.year + ')' : ''}</span>
+            </label>
+        </div>`;
+    }
+    detail.innerHTML = html;
+}
+
+async function addSelectedPapersToTopic(topicId, topicName) {
+    const checked = Array.from(document.querySelectorAll('.add-to-topic-cb:checked'));
+    if (checked.length === 0) return alert('Select at least one paper.');
+
+    const paperIds = checked.map(cb => cb.dataset.paperId);
+    try {
+        const resp = await fetch(`/api/topics/${topicId}/add-papers`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ paper_ids: paperIds })
+        });
+        const data = await resp.json();
+        if (data.success) {
+            alert(`Added ${data.added.length} paper(s).`);
+            openTopic(topicId, topicName);
+        }
+    } catch (err) { alert('Error: ' + err.message); }
+}
+
+async function removeFromTopic(topicId, topicName, paperId) {
+    if (!confirm('Remove this paper from the topic?')) return;
+    try {
+        const resp = await fetch(`/api/topics/${topicId}/remove-papers`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ paper_ids: [paperId] })
+        });
+        const data = await resp.json();
+        if (data.success) openTopic(topicId, topicName);
+    } catch (err) { alert('Error: ' + err.message); }
 }
 
 async function renameTopic(oldTopic) {
@@ -892,12 +1106,140 @@ async function deleteSingleTopic(topic) {
     } catch (err) { alert('Error: ' + err.message); }
 }
 
-function addTopicManual() {
-    const name = prompt('Topic name:');
-    if (!name) return;
-    // Adding a topic manually means we just note it — it only exists on papers.
-    // So prompt user to go to library and assign it to papers.
-    alert(`Topic "${name}" noted. Assign it to papers from the paper detail view, or use "Add to topic" from the library.`);
+
+// --- Paper Selection Mode (library) ---
+
+let selectionMode = false;
+
+function togglePaperSelection() {
+    selectionMode = !selectionMode;
+    document.getElementById('assign-topic-btn').style.display = selectionMode ? 'none' : '';
+    document.getElementById('selection-actions').style.display = selectionMode ? 'flex' : 'none';
+    refreshLibrary();
+}
+
+function updateSelectionCount() {
+    const count = document.querySelectorAll('.paper-select-cb:checked').length;
+    document.getElementById('selected-count').textContent = `${count} selected`;
+}
+
+async function assignSelectedToTopic() {
+    const checked = Array.from(document.querySelectorAll('.paper-select-cb:checked'));
+    if (checked.length === 0) return alert('Select at least one paper.');
+
+    const paperIds = checked.map(cb => cb.dataset.paperId);
+
+    const topicsResp = await fetch('/api/topics');
+    const topics = await topicsResp.json();
+    const topicNames = Object.keys(topics);
+
+    let choice;
+    if (topicNames.length > 0) {
+        choice = prompt(
+            `Assign ${paperIds.length} paper(s) to topic.\n\n` +
+            `Existing topics:\n${topicNames.map((t, i) => `  ${i+1}. ${t}`).join('\n')}\n\n` +
+            `Enter topic name (existing or new):`
+        );
+    } else {
+        choice = prompt('No topics exist yet. Enter a name for a new topic:');
+    }
+    if (!choice) return;
+
+    try {
+        const resp = await fetch('/api/papers/assign-topic', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ topic: choice.trim(), paper_ids: paperIds })
+        });
+        const data = await resp.json();
+        if (data.success) {
+            alert(`Added ${data.added.length} paper(s) to "${data.topic.name}".`);
+            togglePaperSelection();
+        }
+    } catch (err) { alert('Error: ' + err.message); }
+}
+
+
+async function suggestUnifyingTopic() {
+    const checked = Array.from(document.querySelectorAll('.paper-select-cb:checked'));
+    if (checked.length === 0) return alert('Select at least one paper.');
+
+    const paperIds = checked.map(cb => cb.dataset.paperId);
+    document.getElementById('selected-count').textContent = 'Analysing...';
+
+    try {
+        const resp = await fetch('/api/ai/suggest-unifying-topic', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ paper_ids: paperIds })
+        });
+        const data = await resp.json();
+        if (!data.success) {
+            alert('Error: ' + (data.error || 'Unknown'));
+            updateSelectionCount();
+            return;
+        }
+        if (!data.suggestions || data.suggestions.length === 0) {
+            alert('No topic suggestions generated.');
+            updateSelectionCount();
+            return;
+        }
+        // Store paperIds and show checkboxes in the paper list area
+        const container = document.getElementById('paper-list');
+        let html = `<div style="padding:1rem"><h3>Suggested topics for ${paperIds.length} paper(s)</h3>`;
+        for (let i = 0; i < data.suggestions.length; i++) {
+            const s = data.suggestions[i];
+            const badge = s.existing ? '<span class="paper-meta">(existing)</span>' : '<span class="paper-meta">(new)</span>';
+            html += `<div class="paper-card" style="padding:0.5rem 0.75rem">
+                <label style="display:flex;align-items:baseline;gap:0.5rem;cursor:pointer;font-weight:normal">
+                    <input type="checkbox" class="unify-topic-cb" data-index="${i}" checked>
+                    <span><strong>${esc(s.name)}</strong> ${badge}
+                    ${s.description ? `<br><span class="paper-meta">${esc(s.description)}</span>` : ''}</span>
+                </label>
+            </div>`;
+        }
+        html += `<div style="margin-top:0.75rem">
+            <button onclick="applyUnifyingSuggestions()">Assign Selected</button>
+            <button onclick="refreshLibrary(); updateSelectionCount()">Cancel</button>
+        </div></div>`;
+        container.innerHTML = html;
+        container._unifyData = { suggestions: data.suggestions, paperIds };
+    } catch (err) {
+        alert('Error: ' + err.message);
+        updateSelectionCount();
+    }
+}
+
+async function applyUnifyingSuggestions() {
+    const container = document.getElementById('paper-list');
+    const { suggestions, paperIds } = container._unifyData || {};
+    if (!suggestions) return;
+
+    const checked = Array.from(document.querySelectorAll('.unify-topic-cb:checked'));
+    if (checked.length === 0) return alert('Select at least one topic.');
+
+    let totalAdded = 0;
+    for (const cb of checked) {
+        const s = suggestions[parseInt(cb.dataset.index)];
+        const assignResp = await fetch('/api/papers/assign-topic', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ topic: s.name, paper_ids: paperIds })
+        });
+        const assignData = await assignResp.json();
+        if (assignData.success) {
+            totalAdded += assignData.added.length;
+            if (!s.existing && s.description && assignData.topic) {
+                await fetch(`/api/topics/${assignData.topic.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ description: s.description })
+                });
+            }
+        }
+    }
+    alert(`Assigned ${checked.length} topic(s) to ${paperIds.length} paper(s).`);
+    togglePaperSelection();
 }
 
 

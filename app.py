@@ -11,20 +11,25 @@ from papers import (
     PAPERS_DIR,
     create_collection,
     create_paper_stub,
+    create_topic,
     delete_collection,
     delete_paper,
+    find_topic_by_name,
     generate_id,
     get_all_tags,
     get_all_topics,
     get_api_key,
     list_collections,
     list_papers,
+    list_topic_entities,
     load_collection,
     load_config,
     load_paper,
+    load_topic,
     save_collection,
     save_config,
     save_paper,
+    save_topic,
 )
 
 app = Flask(__name__)
@@ -165,6 +170,127 @@ def api_delete_topic():
     from papers import delete_topic
     count = delete_topic(topic)
     return jsonify({"success": True, "updated": count})
+
+
+@app.route("/api/topics/create", methods=["POST"])
+def api_create_topic():
+    """Create a new first-class topic entity."""
+    data = request.json or {}
+    name = data.get("name", "").strip()
+    if not name:
+        return jsonify({"success": False, "error": "Topic name is required"}), 400
+
+    description = data.get("description", "").strip() or None
+    topic = create_topic(name, description)
+    return jsonify({"success": True, "topic": topic}), 201
+
+
+@app.route("/api/topics/<topic_id>")
+def api_get_topic(topic_id):
+    """Get a single topic entity with its papers."""
+    topic = load_topic(topic_id)
+    if topic is None:
+        return jsonify({"error": "Topic not found"}), 404
+
+    papers = list_papers(topic=topic["name"])
+    topic["papers"] = papers
+    return jsonify(topic)
+
+
+@app.route("/api/topics/<topic_id>", methods=["PUT"])
+def api_update_topic(topic_id):
+    """Update a topic entity (name, description)."""
+    topic = load_topic(topic_id)
+    if topic is None:
+        return jsonify({"error": "Topic not found"}), 404
+
+    data = request.json or {}
+
+    new_name = data.get("name", "").strip()
+    if new_name and new_name != topic["name"]:
+        from papers import rename_topic
+        rename_topic(topic["name"], new_name)
+        # Reload since rename_topic creates a new entity
+        topic = find_topic_by_name(new_name)
+
+    if "description" in data:
+        topic["description"] = data["description"]
+        save_topic(topic)
+
+    return jsonify({"success": True, "topic": topic})
+
+
+@app.route("/api/topics/<topic_id>/add-papers", methods=["POST"])
+def api_topic_add_papers(topic_id):
+    """Add papers to a topic."""
+    topic = load_topic(topic_id)
+    if topic is None:
+        return jsonify({"error": "Topic not found"}), 404
+
+    data = request.json or {}
+    paper_ids = data.get("paper_ids", [])
+    added = []
+    for pid in paper_ids:
+        paper = load_paper(pid)
+        if paper is None:
+            continue
+        topics = paper.get("topics", [])
+        if not any(t.lower() == topic["name"].lower() for t in topics):
+            topics.append(topic["name"])
+            paper["topics"] = topics
+            save_paper(paper)
+            added.append(pid)
+    return jsonify({"success": True, "added": added})
+
+
+@app.route("/api/topics/<topic_id>/remove-papers", methods=["POST"])
+def api_topic_remove_papers(topic_id):
+    """Remove papers from a topic."""
+    topic = load_topic(topic_id)
+    if topic is None:
+        return jsonify({"error": "Topic not found"}), 404
+
+    data = request.json or {}
+    paper_ids = data.get("paper_ids", [])
+    removed = []
+    for pid in paper_ids:
+        paper = load_paper(pid)
+        if paper is None:
+            continue
+        topics = paper.get("topics", [])
+        new_topics = [t for t in topics if t.lower() != topic["name"].lower()]
+        if len(new_topics) != len(topics):
+            paper["topics"] = new_topics
+            save_paper(paper)
+            removed.append(pid)
+    return jsonify({"success": True, "removed": removed})
+
+
+@app.route("/api/papers/assign-topic", methods=["POST"])
+def api_assign_topic_to_papers():
+    """Assign a topic to multiple papers. Creates the topic entity if needed."""
+    data = request.json or {}
+    topic_name = data.get("topic", "").strip()
+    paper_ids = data.get("paper_ids", [])
+    if not topic_name or not paper_ids:
+        return jsonify({"success": False, "error": "Topic name and paper_ids are required"}), 400
+
+    entity = find_topic_by_name(topic_name)
+    if not entity:
+        entity = create_topic(topic_name)
+
+    added = []
+    for pid in paper_ids:
+        paper = load_paper(pid)
+        if paper is None:
+            continue
+        topics = paper.get("topics", [])
+        if not any(t.lower() == topic_name.lower() for t in topics):
+            topics.append(entity["name"])
+            paper["topics"] = topics
+            save_paper(paper)
+            added.append(pid)
+    return jsonify({"success": True, "added": added, "topic": entity})
 
 
 @app.route("/api/tags/rename", methods=["POST"])
@@ -609,6 +735,65 @@ def api_suggest_tag_merges():
     tags = get_all_tags()
     suggestions = suggest_tag_merges(tags, config)
     return jsonify({"success": True, "suggestions": suggestions})
+
+
+@app.route("/api/ai/suggest-topics/<paper_id>", methods=["POST"])
+def api_suggest_topics(paper_id):
+    """Suggest existing topics for a paper using AI."""
+    paper = load_paper(paper_id)
+    if paper is None:
+        return jsonify({"error": "Paper not found"}), 404
+
+    if not paper.get("pdf_filename"):
+        return jsonify({"success": False, "error": "Paper has no PDF file"}), 400
+
+    pdf_path = PAPERS_DIR / paper["pdf_filename"]
+    if not pdf_path.exists():
+        return jsonify({"success": False, "error": "PDF file not found"}), 400
+
+    config = load_config()
+    if not get_api_key(config):
+        return jsonify({"success": False, "error": "No API key configured"}), 400
+
+    all_existing = [{"name": t["name"], "description": t.get("description")}
+                    for t in list_topic_entities()]
+    current = paper.get("topics", [])
+
+    from ai import suggest_topics
+    suggestions = suggest_topics(str(pdf_path), all_existing, current, config)
+    return jsonify({"success": True, "suggestions": suggestions})
+
+
+@app.route("/api/ai/suggest-unifying-topic", methods=["POST"])
+def api_suggest_unifying_topic():
+    """Suggest a topic for a group of papers."""
+    data = request.json or {}
+    paper_ids = data.get("paper_ids", [])
+    if len(paper_ids) < 1:
+        return jsonify({"success": False, "error": "Select at least one paper"}), 400
+
+    config = load_config()
+    if not get_api_key(config):
+        return jsonify({"success": False, "error": "No API key configured"}), 400
+
+    paper_summaries = []
+    for pid in paper_ids:
+        p = load_paper(pid)
+        if p:
+            paper_summaries.append({
+                "title": p.get("title") or pid,
+                "summary": p.get("summary"),
+                "tags": p.get("tags", []),
+            })
+
+    existing = [{"name": t["name"], "description": t.get("description")}
+                for t in list_topic_entities()]
+
+    from ai import suggest_unifying_topics
+    suggestions = suggest_unifying_topics(paper_summaries, existing, config)
+    if suggestions:
+        return jsonify({"success": True, "suggestions": suggestions})
+    return jsonify({"success": False, "error": "Could not generate suggestions"})
 
 
 # --- Config ---
