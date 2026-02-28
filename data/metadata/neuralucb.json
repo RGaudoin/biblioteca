@@ -9,15 +9,17 @@
   "year": 2020,
   "source": "37th International Conference on Machine Learning (ICML)",
   "tags": [
-    "contextual bandits",
-    "deep neural networks",
-    "exploration-exploitation",
-    "regret analysis",
-    "ucb algorithm"
+    "bandits",
+    "ucb-algorithm",
+    "regret-analysis",
+    "neural-networks",
+    "exploration-exploitation"
   ],
-  "topics": [],
+  "topics": [
+    "Upper Confidence Bound (UCB) Algorithms"
+  ],
   "summary": "This paper proposes NeuralUCB, a neural contextual bandit algorithm that uses deep neural networks with UCB-based exploration to learn unknown bounded reward functions. The algorithm achieves Õ(√T) regret under standard assumptions, representing the first neural network-based contextual bandit algorithm with near-optimal regret guarantees. The analysis leverages recent advances in neural tangent kernel theory and is validated empirically on benchmark problems.",
-  "notes": null,
+  "notes": "--- From MCTS, Bandits, and AlphaZero: Planning and Exploration in RL ---\nExtension to contextual bandits. But noise is still independent of context.",
   "private": false,
   "added": "2026-02-26",
   "pdf_filename": "neuralucb.pdf",

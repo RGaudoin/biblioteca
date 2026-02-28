@@ -7,13 +7,14 @@
   "year": 2017,
   "source": "Towards Data Science (Medium)",
   "tags": [
-    "resnet",
-    "deep learning",
     "convolutional neural networks",
-    "residual networks",
-    "computer vision"
+    "computer vision",
+    "residual-networks",
+    "neural-networks"
   ],
-  "topics": [],
+  "topics": [
+    "Other Resources and Tools"
+  ],
   "summary": "This paper provides a comprehensive overview of ResNet and its architectural variants, beginning with background on the vanishing gradient problem and the innovation of identity shortcut connections that enable training of very deep networks. The author reviews the core ResNet architecture and recent variants such as ResNeXt, discussing how residual connections have revolutionized deep learning in computer vision applications including image classification, object detection, and face recognition.",
   "notes": null,
   "private": false,

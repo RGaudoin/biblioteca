@@ -5,9 +5,11 @@
   "year": null,
   "source": null,
   "tags": [],
-  "topics": [],
+  "topics": [
+    "AlphaZero and Reinforcement Learning"
+  ],
   "summary": null,
-  "notes": "Supplementary material with details of algorithm.",
+  "notes": "Supplementary material with details of algorithm.\n\n--- From MCTS, Bandits, and AlphaZero: Planning and Exploration in RL ---\nSupplementary material with details of algorithm.",
   "private": false,
   "added": "2026-02-26",
   "pdf_filename": null,

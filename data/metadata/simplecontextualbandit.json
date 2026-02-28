@@ -12,15 +12,17 @@
   "year": 2014,
   "source": "arXiv:1402.0555",
   "tags": [
-    "contextual bandits",
-    "regret bounds",
     "optimization oracle",
     "machine learning",
+    "bandits",
+    "regret-analysis",
     "exploration-exploitation"
   ],
-  "topics": [],
+  "topics": [
+    "Upper Confidence Bound (UCB) Algorithms"
+  ],
   "summary": "This paper presents a fast and simple algorithm for contextual bandits that achieves optimal regret bounds with only Õ(√(KT/log N)) oracle calls across T rounds, vastly improving upon prior work. The algorithm uses a coordinate descent procedure to compute a sparse distribution over policies and an epoch-based structure for efficient updates. The authors provide theoretical analysis and experimental validation demonstrating superior computational and prediction performance compared to existing approaches.",
-  "notes": null,
+  "notes": "--- From MCTS, Bandits, and AlphaZero: Planning and Exploration in RL ---\nReferenced in NeuralUCB. Relies on oracle.",
   "private": false,
   "added": "2026-02-26",
   "pdf_filename": "simplecontextualbandit.pdf",

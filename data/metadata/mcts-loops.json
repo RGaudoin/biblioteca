@@ -7,9 +7,11 @@
   "year": null,
   "source": null,
   "tags": [],
-  "topics": [],
+  "topics": [
+    "Monte Carlo Tree Search (MCTS)"
+  ],
   "summary": null,
-  "notes": null,
+  "notes": "--- From MCTS, Bandits, and AlphaZero: Planning and Exploration in RL ---\nInteresting generalisation to loops (where nodes are visited several times in a rollout) and asymmetric trees. Sets unvisited child node count to infinity—similar to some GitHub implementations. This approach will at first always explore all child nodes once, but this becomes difficult if each node has many child nodes, as the number of nodes to explore explodes exponentially. Similar to standard UCB where all nodes are first explored once.",
   "private": false,
   "added": "2026-02-26",
   "pdf_filename": "mcts-loops.pdf",

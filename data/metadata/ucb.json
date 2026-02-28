@@ -7,15 +7,17 @@
   "year": 2019,
   "source": "Lecture notes",
   "tags": [
-    "multi-armed bandits",
-    "ucb algorithm",
-    "regret analysis",
-    "bernoulli bandits",
-    "online learning"
+    "online learning",
+    "multi-armed-bandits",
+    "bandits",
+    "ucb-algorithm",
+    "regret-analysis"
   ],
-  "topics": [],
+  "topics": [
+    "Upper Confidence Bound (UCB) Algorithms"
+  ],
   "summary": "These lecture notes present the Upper Confidence Bound (UCB) algorithm for solving the multi-armed bandit problem with Bernoulli rewards. The paper provides a formal analysis of the UCB algorithm, proves that it achieves logarithmic regret in T (the number of rounds), and demonstrates that this approach is superior to naive certainty equivalence strategies which suffer linear regret.",
-  "notes": null,
+  "notes": "--- From MCTS, Bandits, and AlphaZero: Planning and Exploration in RL ---\nDetailed treatment. Only Bernoulli (but that also applies to sub-Gaussian, right?). Also includes a proof.",
   "private": false,
   "added": "2026-02-26",
   "pdf_filename": "ucb.pdf",

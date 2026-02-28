@@ -7,15 +7,17 @@
   "year": 2021,
   "source": "Cornell University (Course Note)",
   "tags": [
-    "multi-armed bandit",
-    "ucb algorithm",
-    "regret analysis",
-    "exploration-exploitation",
-    "online learning"
+    "online learning",
+    "multi-armed-bandits",
+    "ucb-algorithm",
+    "regret-analysis",
+    "exploration-exploitation"
   ],
-  "topics": [],
+  "topics": [
+    "Upper Confidence Bound (UCB) Algorithms"
+  ],
   "summary": "This paper presents an analysis of the Upper Confidence Bound (UCB) algorithm for the multi-armed bandit problem, where a learner must balance exploration and exploitation when choosing among K arms with unknown reward distributions. The UCB algorithm maintains confidence intervals for each arm's expected reward and selects the arm with the highest upper confidence bound, achieving an optimal regret bound of O(√KT log(TK/δ)) with high probability. The analysis uses concentration inequalities (specifically Hoeffding's inequality) and union bounds to show that UCB's \"optimistic in the face of uncertainty\" strategy successfully balances exploring under-sampled arms while exploiting promising ones.",
-  "notes": null,
+  "notes": "--- From MCTS, Bandits, and AlphaZero: Planning and Exploration in RL ---\nGood explanation and derivation for (sub) Gaussian noise. Includes proof of regret bound.",
   "private": false,
   "added": "2026-02-26",
   "pdf_filename": "ucb-note-new.pdf",

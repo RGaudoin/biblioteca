@@ -7,15 +7,17 @@
   "year": 2019,
   "source": null,
   "tags": [
-    "reinforcement learning",
     "alphazero",
     "monte carlo tree search",
-    "neural networks",
-    "game playing"
+    "game playing",
+    "neural-networks",
+    "reinforcement-learning"
   ],
-  "topics": [],
+  "topics": [
+    "AlphaZero and Reinforcement Learning"
+  ],
   "summary": "This paper explains DeepMind's AlphaZero algorithm, which achieved superhuman performance in games like Go by combining Monte Carlo Tree Search (MCTS) with deep neural networks trained through self-play. The key innovation is using a single neural network to learn both policy and value functions by training on data generated from games where an MCTS-guided AI plays against itself, with the MCTS providing more accurate move probabilities and game outcomes than the neural network alone. This approach eliminates the need for human expert game data and allows the system to learn optimal play strategies from scratch through iterative self-improvement.",
-  "notes": null,
+  "notes": "--- From MCTS, Bandits, and AlphaZero: Planning and Exploration in RL ---\nOverview. Quite detailed but missing some details. Handwavy explanation for why it works.",
   "private": false,
   "added": "2026-02-26",
   "pdf_filename": "rl-in-alphazero.pdf",

@@ -8,10 +8,10 @@
   "source": "Towards Data Science",
   "tags": [
     "uncertainty quantification",
-    "neural networks",
-    "epistemic uncertainty",
     "tensorflow probability",
-    "bayesian deep learning"
+    "uncertainty-quantification",
+    "bayesian-deep-learning",
+    "neural-networks"
   ],
   "topics": [],
   "summary": "This paper is part 3 of a TensorFlow Probability tutorial series focused on modeling epistemic uncertainty in neural networks. Epistemic uncertainty relates to our lack of knowledge about the data generating process (rather than inherent randomness) and can be reduced by adding more data. The author demonstrates how to implement this using TensorFlow Probability's variational layers, which replace point-wise weight estimates with probability distributions, allowing the model to quantify uncertainty about the learned parameters themselves.",

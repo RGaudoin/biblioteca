@@ -5,9 +5,11 @@
   "year": null,
   "source": null,
   "tags": [],
-  "topics": [],
+  "topics": [
+    "Monte Carlo Tree Search (MCTS)"
+  ],
   "summary": null,
-  "notes": "Interesting intro to UTC and PUCT. Extension to algorithm.",
+  "notes": "Interesting intro to UTC and PUCT. Extension to algorithm.\n\n--- From MCTS, Bandits, and AlphaZero: Planning and Exploration in RL ---\nInteresting intro to UTC and PUCT. Extension to algorithm.",
   "private": false,
   "added": "2026-02-26",
   "pdf_filename": null,

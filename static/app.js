@@ -809,6 +809,7 @@ async function refreshTagManagement() {
                     <span class="paper-meta">${count} paper${count !== 1 ? 's' : ''}</span>
                     <span style="margin-left:auto">
                         <button onclick="event.preventDefault(); renameTag('${esc(tag)}')" style="padding:0.2rem 0.5rem;font-size:0.8rem">Rename</button>
+                        <button onclick="event.preventDefault(); deleteSingleTag('${esc(tag)}')" style="padding:0.2rem 0.5rem;font-size:0.8rem;color:var(--error)">Delete</button>
                     </span>
                 </label>
             </div>`;
@@ -877,6 +878,18 @@ async function deleteSelectedTags() {
     refreshTagManagement();
 }
 
+async function deleteSingleTag(tag) {
+    if (!confirm(`Delete tag "${tag}" from all papers?`)) return;
+    try {
+        await fetch('/api/tags/delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tag })
+        });
+        refreshTagManagement();
+    } catch (err) { alert('Error: ' + err.message); }
+}
+
 async function suggestTagMerges() {
     const el = document.getElementById('tag-suggestions');
     el.className = 'result-box visible info';
@@ -898,37 +911,57 @@ async function suggestTagMerges() {
             return;
         }
 
-        let html = '<strong>Suggested merges:</strong><br>';
-        for (const s of data.suggestions) {
-            const tagsJson = JSON.stringify(s.tags).replace(/'/g, "\\'");
+        let html = '<strong>Suggested merges:</strong> <button onclick="applySelectedSuggestions()">Apply Selected</button> ';
+        html += '<button onclick="toggleAllSuggestions()" style="padding:0.15rem 0.5rem;font-size:0.8rem">Select All / None</button><br>';
+        for (let i = 0; i < data.suggestions.length; i++) {
+            const s = data.suggestions[i];
             html += `<div style="margin:0.5rem 0;padding:0.5rem;background:var(--bg);border-radius:var(--radius)">`;
-            html += `${s.tags.map(t => `<span class="tag">${esc(t)}</span>`).join(' + ')} → <span class="tag" style="font-weight:600">${esc(s.suggested)}</span>`;
-            html += `<br><small>${esc(s.reason)}</small>`;
-            html += ` <button onclick="applyMergeSuggestion(${esc(tagsJson)}, '${esc(s.suggested)}')" style="padding:0.15rem 0.5rem;font-size:0.8rem">Apply</button>`;
-            html += '</div>';
+            html += `<label style="display:flex;align-items:baseline;gap:0.5rem;cursor:pointer;font-weight:normal">`;
+            html += `<input type="checkbox" class="suggestion-cb" data-index="${i}" checked>`;
+            html += `<span>${s.tags.map(t => `<span class="tag">${esc(t)}</span>`).join(' + ')} → <span class="tag" style="font-weight:600">${esc(s.suggested)}</span>`;
+            html += `<br><small>${esc(s.reason)}</small></span>`;
+            html += `</label></div>`;
         }
 
         el.className = 'result-box visible success';
         el.innerHTML = html;
+        // stash suggestions for apply
+        el._suggestions = data.suggestions;
     } catch (err) {
         el.className = 'result-box visible error';
         el.textContent = 'Error: ' + err.message;
     }
 }
 
-async function applyMergeSuggestion(tags, target) {
-    try {
-        const resp = await fetch('/api/tags/merge', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tags, target })
-        });
-        const data = await resp.json();
-        if (data.success) {
-            alert(`Merged: ${data.updated} papers updated.`);
-            refreshTagManagement();
-        }
-    } catch (err) { alert('Error: ' + err.message); }
+function toggleAllSuggestions() {
+    const cbs = document.querySelectorAll('.suggestion-cb');
+    const allChecked = Array.from(cbs).every(cb => cb.checked);
+    cbs.forEach(cb => cb.checked = !allChecked);
+}
+
+async function applySelectedSuggestions() {
+    const el = document.getElementById('tag-suggestions');
+    const suggestions = el._suggestions || [];
+    const checked = el.querySelectorAll('.suggestion-cb:checked');
+    if (checked.length === 0) return alert('No suggestions selected.');
+
+    let total = 0;
+    for (const cb of checked) {
+        const s = suggestions[parseInt(cb.dataset.index)];
+        try {
+            const resp = await fetch('/api/tags/merge', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ tags: s.tags, target: s.suggested })
+            });
+            const data = await resp.json();
+            if (data.success) total += data.updated;
+        } catch (err) { /* continue with remaining */ }
+    }
+    alert(`Applied ${checked.length} merge(s): ${total} papers updated.`);
+    el.innerHTML = '';
+    el.className = 'result-box';
+    refreshTagManagement();
 }
 
 

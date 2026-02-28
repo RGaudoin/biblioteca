@@ -11,15 +11,16 @@
   "year": 2025,
   "source": "arXiv",
   "tags": [
-    "reinforcement learning",
-    "exploration",
-    "multi-armed bandits",
-    "deep rl",
-    "theoretical guarantees"
+    "theoretical guarantees",
+    "multi-armed-bandits",
+    "reinforcement-learning",
+    "exploration-exploitation"
   ],
-  "topics": [],
+  "topics": [
+    "Reinforcement Learning and Exploration"
+  ],
   "summary": "This paper introduces CAE (Critic as an Explorer), a lightweight algorithm that repurposes value networks in deep reinforcement learning for exploration without adding extra parameters. The method leverages embeddings from existing value networks combined with multi-armed bandit techniques to generate exploration bonuses, achieving provable sub-linear regret bounds while requiring only ~10 lines of code to implement. Experiments on MuJoCo and MiniHack demonstrate that CAE and its extension CAE+ (which adds a small auxiliary network with <1% parameter increase) outperform state-of-the-art exploration methods, effectively bridging theoretical rigor with practical efficiency.",
-  "notes": null,
+  "notes": "--- From MCTS, Bandits, and AlphaZero: Planning and Exploration in RL ---\nUCB, bandits, MAB and RL exploration. Kind of bandit approach to exploration. Seems clear with useful links to recent work.",
   "private": false,
   "added": "2026-02-26",
   "pdf_filename": "cae-ucb-bandits.pdf",

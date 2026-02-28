@@ -5,9 +5,11 @@
   "year": null,
   "source": null,
   "tags": [],
-  "topics": [],
+  "topics": [
+    "Mixed Integer Linear Programming (MILP) and Machine Learning"
+  ],
   "summary": null,
-  "notes": "Foray into ML for MILP. MIP NP-hard so approximate solutions via ML welcome. Some links included.",
+  "notes": "Foray into ML for MILP. MIP NP-hard so approximate solutions via ML welcome. Some links included.\n\n--- From MCTS, Bandits, and AlphaZero: Planning and Exploration in RL ---\nForay into ML for MILP. MIP NP-hard so approximate solutions via ML welcome. Some links included.",
   "private": false,
   "added": "2026-02-26",
   "pdf_filename": null,
