@@ -100,24 +100,6 @@ Each collection gets a JSON file in `data/collections/`:
 }
 ```
 
-## Common Commands
+## Running
 
-```bash
-# Run web app
-python app.py
-# Open http://localhost:5001
-
-# CLI import
-python cli.py import local /path/to/paper.pdf [--ai]
-python cli.py import arxiv 2402.02160
-python cli.py import url https://arxiv.org/abs/2402.02160
-python cli.py import batch ~/Documents/papers/
-python cli.py import emails path/to/email_export.txt
-
-# CLI browse
-python cli.py list [--tag TAG] [--topic TOPIC]
-python cli.py search "query"
-python cli.py show PAPER_ID
-python cli.py tags
-python cli.py collections
-```
+See [README.md](README.md) for getting started, CLI usage, and project structure.

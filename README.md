@@ -2,7 +2,7 @@
 
 A personal paper library tool — for collecting, annotating, summarising, and organising papers and articles gathered from everywhere: emails, conference folders, social media links, Google Drive, random browser tabs.
 
-Built as a bespoke tool for one person's workflow, in the same spirit as [Wu Laoshi](https://github.com/RGaudoin/wu-laoshi): customised exactly for how I actually work, not how a product thinks I should.
+Built as a bespoke tool for my workflow, in the same spirit as [Wu Laoshi](https://github.com/RGaudoin/wu-laoshi): customised exactly for how I actually work, not how a product thinks I should.
 
 ## Why
 
@@ -25,7 +25,7 @@ This isn't limited to academic papers. Current affairs pieces, technical blog po
 
 ## Design Principles
 
-- **Personal first** — optimised for one user's workflow, not trying to be Zotero or Mendeley
+- **Personal first** — optimised for my workflow, not trying to be Zotero or Mendeley, but something I can modify, extend, evolve and customise exactly to my needs
 - **Simple storage** — JSON metadata files alongside a folder of PDFs; no database
 - **Transparent** — all metadata is human-readable and hand-editable
 - **Public-friendly** — the tool and metadata are version-controlled and shareable; PDFs and private annotations are not
@@ -84,6 +84,11 @@ biblioteca/
     ├── private/        # Private annotations (gitignored)
     └── config.json     # User settings (gitignored)
 ```
+
+## TODO
+
+- **Private annotations** — marking a paper as private should move all related metadata (not just the annotation) into `data/private/`, with logic to handle the split and avoid duplication between public and private stores
+- **Paper finder** — given partial information (e.g. a title or topic), search for and fetch the PDF from arXiv or other open-access sources, especially useful when the original is behind a paywall
 
 ## How It Was Built
 
