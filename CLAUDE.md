@@ -22,6 +22,7 @@ biblioteca/
 │   ├── papers/            # PDF files (gitignored)
 │   ├── metadata/          # Per-paper JSON metadata (versioned)
 │   ├── collections/       # Collection JSON files (versioned)
+│   ├── topics/            # Topic entity files (versioned)
 │   ├── private/           # Private annotations/metadata (gitignored)
 │   └── config.json        # User settings incl. API key (gitignored)
 ├── requirements.txt
@@ -110,8 +111,8 @@ python app.py
 python cli.py import local /path/to/paper.pdf [--ai]
 python cli.py import arxiv 2402.02160
 python cli.py import url https://arxiv.org/abs/2402.02160
-python cli.py import batch ~/Documents/sciency/ML/DL/
-python cli.py import emails data/private/temp/email_samples_1.txt
+python cli.py import batch ~/Documents/papers/
+python cli.py import emails path/to/email_export.txt
 
 # CLI browse
 python cli.py list [--tag TAG] [--topic TOPIC]

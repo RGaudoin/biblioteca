@@ -1535,6 +1535,130 @@ async function saveModels() {
 }
 
 
+// --- Duplicates ---
+
+async function findDuplicates() {
+    const container = document.getElementById('duplicates-results');
+    container.innerHTML = '<p>Scanning library for duplicates...</p>';
+
+    try {
+        const resp = await fetch('/api/duplicates');
+        const data = await resp.json();
+        renderDuplicateResults(data);
+    } catch (err) {
+        container.innerHTML = `<p style="color:var(--error)">Error: ${esc(err.message)}</p>`;
+    }
+}
+
+function renderDuplicateResults(data) {
+    const container = document.getElementById('duplicates-results');
+    const groups = data.groups || [];
+    const orphans = data.orphans || [];
+
+    if (groups.length === 0 && orphans.length === 0) {
+        container.innerHTML = '<p style="color:var(--success)">No duplicates or orphans found. Library is clean.</p>';
+        return;
+    }
+
+    let html = `<p><strong>${groups.length}</strong> duplicate group${groups.length !== 1 ? 's' : ''}, <strong>${orphans.length}</strong> orphan${orphans.length !== 1 ? 's' : ''}</p>`;
+
+    // Duplicate groups
+    for (let gi = 0; gi < groups.length; gi++) {
+        const g = groups[gi];
+        const reasonLabels = { hash: 'Hash', arxiv_id: 'arXiv', doi: 'DOI', title: 'Title' };
+        const badge = reasonLabels[g.reason] || g.reason;
+
+        html += `<div class="paper-card" style="padding:0.75rem;margin-bottom:0.5rem" id="dup-group-${gi}">`;
+        html += `<div style="margin-bottom:0.5rem"><span class="tag">${esc(badge)}</span> <strong>${g.papers.length} papers</strong></div>`;
+
+        for (let pi = 0; pi < g.papers.length; pi++) {
+            const p = g.papers[pi];
+            const title = p.title || p.original_filename || p.pdf_filename || p.id;
+            const meta = [(p.authors || []).join(', '), p.year, p.source].filter(Boolean).join(' · ');
+            const hasPdf = p.pdf_filename && '(has PDF)' || '(no PDF)';
+            const isDefault = pi === 0;
+
+            html += `<div style="display:flex;align-items:center;gap:0.5rem;margin:0.3rem 0;padding:0.3rem;border-radius:var(--radius);${isDefault ? 'background:var(--bg)' : ''}">
+                <input type="radio" name="dup-keep-${gi}" value="${esc(p.id)}" ${isDefault ? 'checked' : ''}>
+                <div style="flex:1">
+                    <div><strong>${esc(title)}</strong> <span class="paper-meta">${esc(hasPdf)}</span></div>
+                    ${meta ? `<div class="paper-meta">${esc(meta)}</div>` : ''}
+                    <div class="paper-meta">ID: ${esc(p.id)} · Added: ${p.added || '?'} · Source: ${p.import_source || '?'}</div>
+                </div>
+            </div>`;
+        }
+
+        html += `<div style="margin-top:0.5rem">
+            <button onclick="mergeDuplicateGroup(${gi})">Merge (keep selected)</button>
+        </div>`;
+        html += '</div>';
+    }
+
+    // Orphans
+    if (orphans.length > 0) {
+        html += '<hr class="section-divider"><h4>Orphan stubs (metadata with missing PDF)</h4>';
+        for (const p of orphans) {
+            const title = p.title || p.original_filename || p.id;
+            html += `<div class="paper-card" style="padding:0.5rem 0.75rem;display:flex;align-items:center;gap:0.5rem">
+                <div style="flex:1">
+                    <div><strong>${esc(title)}</strong></div>
+                    <div class="paper-meta">ID: ${esc(p.id)} · Missing: ${esc(p.pdf_filename)}</div>
+                </div>
+                <button onclick="deleteOrphan('${esc(p.id)}')" style="color:var(--error);padding:0.2rem 0.5rem;font-size:0.85rem">Delete</button>
+            </div>`;
+        }
+    }
+
+    container.innerHTML = html;
+    // Stash data for merge actions
+    container._dupData = data;
+}
+
+async function mergeDuplicateGroup(groupIndex) {
+    const container = document.getElementById('duplicates-results');
+    const data = container._dupData;
+    if (!data) return;
+
+    const group = data.groups[groupIndex];
+    const keepRadio = document.querySelector(`input[name="dup-keep-${groupIndex}"]:checked`);
+    if (!keepRadio) return alert('Select which paper to keep.');
+
+    const keepId = keepRadio.value;
+    const removeIds = group.papers.map(p => p.id).filter(id => id !== keepId);
+
+    if (!confirm(`Keep "${keepId}" and delete ${removeIds.length} other(s)?\nTags, topics, and notes will be merged into the keeper.`)) return;
+
+    try {
+        const resp = await fetch('/api/duplicates/merge', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ keep_id: keepId, remove_ids: removeIds })
+        });
+        const result = await resp.json();
+        if (result.success) {
+            alert(`Merged. Kept: ${result.paper.id}`);
+            findDuplicates();  // refresh
+        } else {
+            alert('Merge failed: ' + (result.error || 'Unknown'));
+        }
+    } catch (err) {
+        alert('Error: ' + err.message);
+    }
+}
+
+async function deleteOrphan(paperId) {
+    if (!confirm(`Delete orphan "${paperId}"? (metadata only — PDF is already missing)`)) return;
+    try {
+        const resp = await fetch(`/api/papers/${paperId}`, { method: 'DELETE' });
+        const data = await resp.json();
+        if (data.success) findDuplicates();
+        else alert('Delete failed: ' + (data.error || 'Unknown'));
+    } catch (err) {
+        alert('Error: ' + err.message);
+    }
+}
+
+
 // --- Utility ---
 
 function paperDisplayTitle(p) {

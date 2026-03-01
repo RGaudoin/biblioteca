@@ -1,34 +1,93 @@
 # Biblioteca
 
-A personal research paper library — for collecting, annotating, summarising, and searching academic papers gathered from emails, conference folders, and ad-hoc reading.
+A personal paper library tool — for collecting, annotating, summarising, and organising papers and articles gathered from everywhere: emails, conference folders, social media links, Google Drive, random browser tabs.
 
-Built as a bespoke tool for one researcher's workflow, in the same spirit as [Wu Laoshi](https://github.com/RGaudoin/wu-laoshi): customised exactly for how I actually work, not how a product thinks I should.
+Built as a bespoke tool for one person's workflow, in the same spirit as [Wu Laoshi](https://github.com/RGaudoin/wu-laoshi): customised exactly for how I actually work, not how a product thinks I should.
 
 ## Why
 
-Papers accumulate everywhere — email attachments, conference proceedings, colleague recommendations, rabbit-hole discoveries. They end up scattered across folders with no consistent way to search, annotate, or recall why a paper mattered. Biblioteca is meant to fix that.
+Papers and articles accumulate everywhere. An interesting link spotted on social media while on a bus in London. Email attachments from colleagues. Conference proceedings downloaded in bulk. Rabbit-hole discoveries at 2am. They end up scattered across folders, cloud drives, browser bookmarks, and email threads — with no consistent way to search, annotate, or recall why something mattered.
 
-## Planned Features
+This isn't limited to academic papers. Current affairs pieces, technical blog posts, long-form analyses — anything worth reading carefully and returning to later. Biblioteca is meant to bring all of that into one searchable, annotated, organised place.
 
-- **Paper ingestion** — import PDFs from local folders; extract title, authors, abstract automatically where possible
-- **Summaries** — AI-assisted summarisation with the option to write or edit your own
-- **Annotations & comments** — personal notes, key takeaways, relevance to current work
-- **Search** — full-text and metadata search across the whole collection
-- **Tags & topics** — flexible categorisation (topics, tags, project links)
-- **Privacy controls** — flag papers/notes as private (stored in a separate, non-versioned metadata directory)
-- **Web interface** — lightweight Flask app for browsing and managing the library
-- **Public-friendly design** — the tool and metadata are version-controlled and shareable; actual PDF files and private annotations are not
+## Features
+
+- **Multi-source import** — upload PDFs, paste arXiv IDs or URLs, batch-import from folders, parse email text for links, import reading lists
+- **AI metadata extraction** — automatic title, authors, year, tags, and summary extraction using Claude
+- **AI summarisation** — generate concise summaries on demand, with model attribution
+- **Topics** — first-class organisational units with descriptions, paper management, and AI-suggested assignments
+- **Tags** — granular labels with AI-suggested merges, bulk rename, and cleanup tools
+- **Collections** — curated reading lists with sections and notes
+- **Duplicate detection** — find duplicate papers by hash, arXiv ID, DOI, or title similarity, with merge/cleanup tools
+- **Search** — full-text and metadata search across the whole library
+- **Privacy controls** — flag papers or notes as private (stored separately, never version-controlled)
+- **Web interface** — lightweight single-page Flask app for browsing and managing everything
 
 ## Design Principles
 
-- **Personal first** — optimised for one user's workflow; not trying to be Zotero or Mendeley
-- **Simple storage** — JSON metadata files alongside a folder of PDFs; no database required to start
-- **Incremental** — start with basic import and search; add AI features as needed
-- **Transparent** — all metadata is human-readable; no opaque databases or binary formats
+- **Personal first** — optimised for one user's workflow, not trying to be Zotero or Mendeley
+- **Simple storage** — JSON metadata files alongside a folder of PDFs; no database
+- **Transparent** — all metadata is human-readable and hand-editable
+- **Public-friendly** — the tool and metadata are version-controlled and shareable; PDFs and private annotations are not
 
-## Project Status
+## Getting Started
 
-Early planning stage. No code yet.
+```bash
+# Install dependencies
+pip install -r requirements.txt
+
+# Run the web app
+python app.py
+# Open http://localhost:5001
+```
+
+You'll need a Claude API key for AI features (summarisation, metadata extraction, topic suggestions). Add it in Settings once the app is running.
+
+## CLI
+
+```bash
+# Import a single paper
+python cli.py import local /path/to/paper.pdf [--ai]
+python cli.py import arxiv 2402.02160
+python cli.py import url https://arxiv.org/abs/2402.02160
+
+# Batch import from a folder
+python cli.py import batch ~/Documents/papers/
+
+# Browse
+python cli.py list [--tag TAG] [--topic TOPIC]
+python cli.py search "query"
+python cli.py show PAPER_ID
+python cli.py tags
+python cli.py collections
+```
+
+## Project Structure
+
+```
+biblioteca/
+├── app.py              # Flask web application + API routes
+├── papers.py           # Core data model: CRUD, search, config, paths
+├── importers.py        # Import pipeline: local, URL, arXiv, batch, email
+├── ai.py               # Claude API: metadata extraction, summarisation
+├── cli.py              # CLI entry points
+├── templates/
+│   └── index.html      # Single-page app (Jinja2)
+├── static/
+│   ├── app.js          # Frontend logic (vanilla JS)
+│   └── style.css       # Styles
+└── data/
+    ├── papers/         # PDF files (gitignored)
+    ├── metadata/       # Per-paper JSON metadata (versioned)
+    ├── collections/    # Collection JSON files (versioned)
+    ├── topics/         # Topic entity files (versioned)
+    ├── private/        # Private annotations (gitignored)
+    └── config.json     # User settings (gitignored)
+```
+
+## How It Was Built
+
+Biblioteca was built entirely through conversation with [Claude Code](https://claude.ai/claude-code) — Anthropic's agentic coding tool. The design, architecture, and every line of code emerged from an iterative dialogue: describing what I needed, reviewing what was built, testing, and refining. No code was written by hand.
 
 ## Licence
 

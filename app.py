@@ -14,6 +14,7 @@ from papers import (
     create_topic,
     delete_collection,
     delete_paper,
+    find_duplicates,
     find_topic_by_name,
     generate_id,
     get_all_tags,
@@ -26,6 +27,7 @@ from papers import (
     load_config,
     load_paper,
     load_topic,
+    merge_papers,
     save_collection,
     save_config,
     save_paper,
@@ -794,6 +796,30 @@ def api_suggest_unifying_topic():
     if suggestions:
         return jsonify({"success": True, "suggestions": suggestions})
     return jsonify({"success": False, "error": "Could not generate suggestions"})
+
+
+# --- Duplicates ---
+
+@app.route("/api/duplicates")
+def api_find_duplicates():
+    """Scan library for duplicate papers and orphan stubs."""
+    result = find_duplicates()
+    return jsonify(result)
+
+
+@app.route("/api/duplicates/merge", methods=["POST"])
+def api_merge_duplicates():
+    """Merge duplicate papers: keep one, absorb metadata from others, delete others."""
+    data = request.json or {}
+    keep_id = data.get("keep_id", "").strip()
+    remove_ids = data.get("remove_ids", [])
+    if not keep_id or not remove_ids:
+        return jsonify({"success": False, "error": "keep_id and remove_ids are required"}), 400
+
+    keeper = merge_papers(keep_id, remove_ids)
+    if keeper is None:
+        return jsonify({"success": False, "error": "Paper to keep not found"}), 404
+    return jsonify({"success": True, "paper": keeper})
 
 
 # --- Config ---

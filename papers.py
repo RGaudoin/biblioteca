@@ -644,3 +644,148 @@ def find_by_hash(file_hash):
         if p.get("pdf_hash") == file_hash:
             return p
     return None
+
+
+def _normalise_title(title):
+    """Normalise a title for duplicate comparison: lowercase, strip non-alphanumeric."""
+    if not title:
+        return ""
+    title = unicodedata.normalize("NFKD", title)
+    title = title.encode("ascii", "ignore").decode("ascii")
+    title = re.sub(r"[^a-z0-9]+", " ", title.lower()).strip()
+    return re.sub(r"\s+", " ", title)
+
+
+def find_duplicates():
+    """Find duplicate papers and orphan stubs across the library.
+
+    Returns dict with:
+        groups: list of {reason, papers: [metadata...]}
+        orphans: list of metadata dicts (pdf_filename set but file missing)
+    """
+    papers = list_papers()
+
+    # Build indexes
+    by_hash = {}
+    by_arxiv = {}
+    by_doi = {}
+    by_title = {}
+    orphans = []
+
+    for p in papers:
+        # Check for orphan: metadata references a PDF that doesn't exist
+        pdf_fn = p.get("pdf_filename")
+        if pdf_fn and not (PAPERS_DIR / pdf_fn).exists():
+            orphans.append(p)
+
+        h = p.get("pdf_hash")
+        if h:
+            by_hash.setdefault(h, []).append(p)
+
+        arxiv = p.get("arxiv_id")
+        if arxiv:
+            by_arxiv.setdefault(arxiv, []).append(p)
+
+        doi = p.get("doi")
+        if doi:
+            by_doi.setdefault(doi.lower(), []).append(p)
+
+        norm = _normalise_title(p.get("title"))
+        if norm and len(norm) > 5:  # skip very short/empty titles
+            by_title.setdefault(norm, []).append(p)
+
+    # Collect duplicate groups, deduplicating across detection methods
+    groups = []
+    seen_pairs = set()  # track paper ID pairs already reported
+
+    def _add_group(reason, group_papers):
+        ids = frozenset(p["id"] for p in group_papers)
+        if ids in seen_pairs or len(ids) < 2:
+            return
+        seen_pairs.add(ids)
+        groups.append({"reason": reason, "papers": group_papers})
+
+    # Hash matches (strongest signal)
+    for h, ps in by_hash.items():
+        if len(ps) > 1:
+            _add_group("hash", ps)
+
+    # arXiv ID matches
+    for aid, ps in by_arxiv.items():
+        if len(ps) > 1:
+            _add_group("arxiv_id", ps)
+
+    # DOI matches
+    for doi, ps in by_doi.items():
+        if len(ps) > 1:
+            _add_group("doi", ps)
+
+    # Title matches (weakest signal)
+    for norm, ps in by_title.items():
+        if len(ps) > 1:
+            _add_group("title", ps)
+
+    return {"groups": groups, "orphans": orphans}
+
+
+def merge_papers(keep_id, remove_ids):
+    """Merge duplicate papers: keep one, absorb metadata from others, delete others.
+
+    Merges tags, topics, and notes from removed papers into the keeper.
+    Fills in any fields that are null on the keeper but set on a removed paper.
+
+    Returns updated keeper metadata, or None if keep_id not found.
+    """
+    keeper = load_paper(keep_id)
+    if keeper is None:
+        return None
+
+    for rid in remove_ids:
+        if rid == keep_id:
+            continue
+        other = load_paper(rid)
+        if other is None:
+            continue
+
+        # Merge tags (union, case-insensitive dedup)
+        existing_tags_lower = {t.lower() for t in keeper.get("tags", [])}
+        for tag in other.get("tags", []):
+            if tag.lower() not in existing_tags_lower:
+                keeper.setdefault("tags", []).append(tag)
+                existing_tags_lower.add(tag.lower())
+
+        # Merge topics (union, case-insensitive dedup)
+        existing_topics_lower = {t.lower() for t in keeper.get("topics", [])}
+        for topic in other.get("topics", []):
+            if topic.lower() not in existing_topics_lower:
+                keeper.setdefault("topics", []).append(topic)
+                existing_topics_lower.add(topic.lower())
+
+        # Append notes
+        other_notes = (other.get("notes") or "").strip()
+        if other_notes:
+            keeper_notes = (keeper.get("notes") or "").strip()
+            if keeper_notes:
+                keeper["notes"] = keeper_notes + "\n\n" + other_notes
+            else:
+                keeper["notes"] = other_notes
+
+        # Fill in missing fields from the other paper
+        fill_fields = ["title", "authors", "year", "source", "doi", "arxiv_id",
+                        "url", "summary", "pdf_hash", "import_source"]
+        for field in fill_fields:
+            if not keeper.get(field) and other.get(field):
+                keeper[field] = other[field]
+
+        # If keeper has no PDF but other does, take it
+        if not keeper.get("pdf_filename") and other.get("pdf_filename"):
+            if (PAPERS_DIR / other["pdf_filename"]).exists():
+                keeper["pdf_filename"] = other["pdf_filename"]
+                # Don't delete the PDF when removing the other paper
+                delete_paper(rid, delete_pdf=False)
+                continue
+
+        delete_paper(rid)
+
+    save_paper(keeper)
+    return keeper
