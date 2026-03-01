@@ -1,0 +1,28 @@
+{
+  "id": "parr-2021-partially-observable-mdps-pomdps",
+  "title": "Partially Observable MDPs (POMDPs)",
+  "authors": [
+    "Ron Parr"
+  ],
+  "year": 2021,
+  "source": "CPS 570 Course Lecture",
+  "tags": [
+    "belief states",
+    "markov processes",
+    "reinforcement-learning",
+    "partially-observable-mdps",
+    "hidden-state"
+  ],
+  "topics": [],
+  "summary": "This lecture introduces Partially Observable MDPs (POMDPs), which extend traditional MDPs to settings where the true state is hidden and only observations are available to the agent. The paper explains how belief states—probability distributions over hidden states—transform discrete POMDP problems into continuous belief space problems, and derives the Bellman equation for computing optimal value functions in belief space.",
+  "notes": null,
+  "private": false,
+  "added": "2026-03-01",
+  "pdf_filename": "parr-2021-partially-observable-mdps-pomdps.pdf",
+  "url": null,
+  "arxiv_id": null,
+  "doi": null,
+  "import_source": "local",
+  "original_filename": "POMDPs.pdf",
+  "pdf_hash": "6684481639045d941661c342219ccc1b79b2a3187fec84b6d9d9bd4ed33ab1bc"
+}

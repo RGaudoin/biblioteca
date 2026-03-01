@@ -1,0 +1,32 @@
+{
+  "id": "cavalcante-2023-weibull-regression-machine-learning",
+  "title": "Weibull Regression and Machine Learning Survival Models: Methodology, Comparison, and Application to Biomedical Data Related to Cardiac Surgery",
+  "authors": [
+    "Thalytta Cavalcante",
+    "Raydonal Ospina",
+    "Víctor Leiva",
+    "Xavier Cabezas",
+    "Carlos Martin-Barreiro"
+  ],
+  "year": 2023,
+  "source": "Biology",
+  "tags": [
+    "survival analysis",
+    "weibull regression",
+    "machine learning",
+    "cardiac surgery",
+    "random survival forest"
+  ],
+  "topics": [],
+  "summary": "This paper presents a comparative study between Weibull regression and random survival forest (RSF) models for analyzing survival data from cardiac surgery patients. The models are evaluated using error rate, Harrell C-index, and variable importance, with RSF showing superior predictive performance (20.31% error rate) compared to Weibull (23.82%). The methodology is demonstrated on length of stay data from cardiac surgery patients at the Heart Institute of the University of São Paulo, Brazil.",
+  "notes": null,
+  "private": false,
+  "added": "2026-03-01",
+  "pdf_filename": "cavalcante-2023-weibull-regression-machine-learning.pdf",
+  "url": null,
+  "arxiv_id": null,
+  "doi": null,
+  "import_source": "local",
+  "original_filename": "weibull_regression.pdf",
+  "pdf_hash": "d2835b8d6f939873901bc2ef26a7a4c3efab932b874a9b4bc9f2fcac21c3bda5"
+}

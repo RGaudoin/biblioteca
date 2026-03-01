@@ -8,10 +8,10 @@
   "source": "Cornell University (Course Note)",
   "tags": [
     "online learning",
-    "multi-armed-bandits",
     "ucb-algorithm",
     "regret-analysis",
-    "exploration-exploitation"
+    "exploration-exploitation",
+    "multi-armed-bandits"
   ],
   "topics": [
     "Upper Confidence Bound (UCB) Algorithms"

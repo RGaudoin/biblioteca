@@ -10,8 +10,8 @@
     "monte carlo tree search",
     "alphazero",
     "planning models",
-    "policy optimization",
-    "reinforcement-learning"
+    "reinforcement-learning",
+    "policy-optimization"
   ],
   "topics": [
     "Monte Carlo Tree Search (MCTS)"

@@ -1,0 +1,29 @@
+{
+  "id": "lefebvre-2021-strategy-optimal-fitting-multiplicative",
+  "title": "A strategy for optimal fitting of multiplicative and additive hazards regression models",
+  "authors": [
+    "François Lefebvre",
+    "Roch Giorgi"
+  ],
+  "year": 2021,
+  "source": "BMC Medical Research Methodology",
+  "tags": [
+    "survival analysis",
+    "hazards regression",
+    "diagnostic tools",
+    "additive models",
+    "cox-regression"
+  ],
+  "topics": [],
+  "summary": "This paper proposes a comprehensive strategy for optimal fitting of both multiplicative and additive hazards regression models in survival analysis. The strategy integrates classical diagnostic tools (Schoenfeld and martingale residuals) with less common approaches (pseudo-observations, martingale residual processes, and Arjas plots) to check model assumptions. The proposed methodology is demonstrated on myocardial infarction data (TRACE dataset) analyzing five covariates' effects on mortality hazard, showing that combining both model types provides improved data interpretation.",
+  "notes": null,
+  "private": false,
+  "added": "2026-03-01",
+  "pdf_filename": "lefebvre-2021-strategy-optimal-fitting-multiplicative.pdf",
+  "url": null,
+  "arxiv_id": null,
+  "doi": null,
+  "import_source": "local",
+  "original_filename": "additive_regression_extension_cox.pdf",
+  "pdf_hash": "8d4446b5e1fe5366c2f8bf8116402d4bc4d2b0fcff44511a77cffc47e9b250c1"
+}

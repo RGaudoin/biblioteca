@@ -1,0 +1,27 @@
+{
+  "id": "silver-lecture-2-markov-decision",
+  "title": "Lecture 2: Markov Decision Processes",
+  "authors": [
+    "David Silver"
+  ],
+  "year": null,
+  "source": "Lecture Series",
+  "tags": [
+    "markov property",
+    "state transitions",
+    "reinforcement-learning",
+    "markov-decision-processes"
+  ],
+  "topics": [],
+  "summary": "This lecture introduces Markov Decision Processes (MDPs) as the formal framework for reinforcement learning in fully observable environments. It covers fundamental concepts including Markov processes, the Markov property, state transition matrices, and extensions to MDPs, establishing that almost all RL problems can be formalized as MDPs.",
+  "notes": null,
+  "private": false,
+  "added": "2026-03-01",
+  "pdf_filename": "silver-lecture-2-markov-decision.pdf",
+  "url": null,
+  "arxiv_id": null,
+  "doi": null,
+  "import_source": "local",
+  "original_filename": "MDP.pdf",
+  "pdf_hash": "e66a0f67021ed3be71c508cc7a4f35e0fabff4b67d7494e938a462f66aac615a"
+}

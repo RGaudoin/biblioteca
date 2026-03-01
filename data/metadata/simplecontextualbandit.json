@@ -14,9 +14,9 @@
   "tags": [
     "optimization oracle",
     "machine learning",
-    "bandits",
     "regret-analysis",
-    "exploration-exploitation"
+    "exploration-exploitation",
+    "multi-armed-bandits"
   ],
   "topics": [
     "Upper Confidence Bound (UCB) Algorithms"

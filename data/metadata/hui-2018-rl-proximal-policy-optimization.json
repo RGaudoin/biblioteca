@@ -1,0 +1,27 @@
+{
+  "id": "hui-2018-rl-proximal-policy-optimization",
+  "title": "RL — Proximal Policy Optimization (PPO) Explained",
+  "authors": [
+    "Jonathan Hui"
+  ],
+  "year": 2018,
+  "source": "Medium",
+  "tags": [
+    "trust region",
+    "reinforcement-learning",
+    "proximal-policy-optimization",
+    "policy-optimization"
+  ],
+  "topics": [],
+  "summary": "This paper explains Proximal Policy Optimization (PPO), a reinforcement learning algorithm that addresses convergence problems in policy gradient methods by using a simpler first-order optimization approach with KL-divergence constraints instead of computationally expensive second-order methods. PPO uses the Minorize-Maximization framework and trust region concepts to limit policy changes in each iteration, allowing for stable and efficient training without the scalability issues of natural policy gradients.",
+  "notes": null,
+  "private": false,
+  "added": "2026-03-01",
+  "pdf_filename": "hui-2018-rl-proximal-policy-optimization.pdf",
+  "url": null,
+  "arxiv_id": null,
+  "doi": null,
+  "import_source": "local",
+  "original_filename": "PPO_medium.pdf",
+  "pdf_hash": "c82fbe986f70910227654fef915696a1673f3cb17078e638c2d2e3d2b701405b"
+}

@@ -1,0 +1,28 @@
+{
+  "id": "mahmud-2021-reinforcement-learning-next-great",
+  "title": "Reinforcement learning: The next great AI tech moving from the lab to the real world",
+  "authors": [
+    "M M Hassan Mahmud"
+  ],
+  "year": 2021,
+  "source": "VentureBeat",
+  "tags": [
+    "artificial intelligence",
+    "control systems",
+    "real-world applications",
+    "machine learning",
+    "reinforcement-learning"
+  ],
+  "topics": [],
+  "summary": "This article discusses reinforcement learning (RL) as a powerful AI technology transitioning from research labs to real-world applications in manufacturing, autonomous vehicles, and other complex systems. The paper explains how RL differs from traditional pattern recognition AI, explores the temporal credit assignment challenge, and reviews successful demonstrations in games like Go and Atari before addressing the practical application of RL through simulation-based approaches and real-world deployment strategies.",
+  "notes": null,
+  "private": false,
+  "added": "2026-03-01",
+  "pdf_filename": "mahmud-2021-reinforcement-learning-next-great.pdf",
+  "url": null,
+  "arxiv_id": null,
+  "doi": null,
+  "import_source": "local",
+  "original_filename": "RL_industry_overview.pdf",
+  "pdf_hash": "6d6312eba5af5e3a2f9d637bcb788e8c92fc7548b7524a44ee950a81fe8d48a0"
+}

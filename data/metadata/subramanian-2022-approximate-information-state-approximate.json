@@ -1,0 +1,31 @@
+{
+  "id": "subramanian-2022-approximate-information-state-approximate",
+  "title": "Approximate Information State for Approximate Planning and Reinforcement Learning in Partially Observed Systems",
+  "authors": [
+    "Jayakumar Subramanian",
+    "Amit Sinha",
+    "Raihan Seraj",
+    "Aditya Mahajan"
+  ],
+  "year": 2022,
+  "source": "Journal of Machine Learning Research",
+  "tags": [
+    "approximate dynamic programming",
+    "information state",
+    "reinforcement-learning",
+    "partially-observable-mdps",
+    "policy-optimization"
+  ],
+  "topics": [],
+  "summary": "This paper proposes a theoretical framework for approximate planning and learning in partially observed systems based on the concept of approximate information state (AIS). The authors show that when a function of history approximately satisfies information state properties, there exists a corresponding approximate dynamic program with bounded loss of optimality. The framework unifies several existing approximations in literature and includes policy gradient algorithms for partially observed reinforcement learning with numerical experiments on low to high-dimensional environments.",
+  "notes": null,
+  "private": false,
+  "added": "2026-03-01",
+  "pdf_filename": "subramanian-2022-approximate-information-state-approximate.pdf",
+  "url": null,
+  "arxiv_id": null,
+  "doi": null,
+  "import_source": "local",
+  "original_filename": "information-pomdp-rl.pdf",
+  "pdf_hash": "247d75b379d18f5355921a1ca2884551210927e7bfa6e9d6878e0ee24a8ec8f5"
+}

@@ -1,0 +1,28 @@
+{
+  "id": "zhang-2016-parametric-regression-model-survival",
+  "title": "Parametric regression model for survival data: Weibull regression model as an example",
+  "authors": [
+    "Zhongheng Zhang"
+  ],
+  "year": 2016,
+  "source": "Annals of Translational Medicine",
+  "tags": [
+    "weibull regression",
+    "survival analysis",
+    "parametric models",
+    "statistical methods",
+    "R software"
+  ],
+  "topics": [],
+  "summary": "This article introduces Weibull regression models, a parametric approach to survival analysis that estimates baseline hazard functions and covariate coefficients while providing clinically meaningful statistics such as hazard ratios (HR) and event time ratios (ETR). The paper illustrates practical implementation using R software packages (SurvRegCensCov and eha) with examples, including model adequacy assessment through Kaplan-Meier curves and goodness-of-fit tests. Model development strategies including variable selection and visualization techniques are presented to make Weibull regression more accessible to clinical investigators.",
+  "notes": null,
+  "private": false,
+  "added": "2026-03-01",
+  "pdf_filename": "zhang-2016-parametric-regression-model-survival.pdf",
+  "url": null,
+  "arxiv_id": null,
+  "doi": null,
+  "import_source": "local",
+  "original_filename": "weibull_goodness_of_fit-etc.pdf",
+  "pdf_hash": "c9772dfb688d216c713264f0052a3b8b78972bbbfbfa9486a7d88913ea1af4f1"
+}

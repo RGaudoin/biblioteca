@@ -12,9 +12,9 @@
   "tags": [
     "monte carlo tree search",
     "stochastic environments",
-    "multi-armed-bandits",
     "ucb-algorithm",
-    "regret-analysis"
+    "regret-analysis",
+    "multi-armed-bandits"
   ],
   "topics": [
     "Monte Carlo Tree Search (MCTS)"

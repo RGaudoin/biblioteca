@@ -10,8 +10,8 @@
     "uncertainty estimation",
     "tensorflow probability",
     "probabilistic programming",
-    "uncertainty-quantification",
-    "neural-networks"
+    "neural-networks",
+    "uncertainty-quantification"
   ],
   "topics": [],
   "summary": "This paper introduces a tutorial series on modeling uncertainty in neural networks using TensorFlow Probability (TFP). The author motivates the importance of uncertainty estimation through a medical diagnosis example, showing how a model might give high confidence predictions (0.9 softmax score) but have wide confidence intervals when uncertainty is properly modeled, which could dramatically affect clinical decision-making. The paper provides a hands-on introduction to TFP's key components, particularly the `tfp.distributions` module, explaining concepts like batch shapes, event shapes, and basic distribution methods (sample, prob, log_prob) that form the foundation for uncertainty modeling in neural networks.",

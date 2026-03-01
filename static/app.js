@@ -169,8 +169,16 @@ async function bulkExtract() {
         const data = await resp.json();
         if (data.success) {
             const updated = data.results.filter(r => r.status === 'updated').length;
-            const failed = data.results.filter(r => r.status === 'failed').length;
-            alert(`Bulk extraction complete: ${updated} updated, ${failed} failed out of ${data.processed} processed.`);
+            const failed = data.results.filter(r => r.status === 'failed' || r.status === 'skipped').length;
+            let msg = `Bulk extraction: ${updated} updated, ${failed} failed out of ${data.processed} processed.`;
+            const problems = data.results.filter(r => r.reason);
+            if (problems.length > 0) {
+                msg += '\n\nDetails:';
+                for (const r of problems) {
+                    msg += `\n• ${r.paper_id}: ${r.reason}`;
+                }
+            }
+            alert(msg);
             refreshLibrary();
         } else {
             alert('Bulk extraction failed: ' + (data.error || 'Unknown error'));
@@ -302,12 +310,13 @@ async function suggestTopics(paperId) {
             openPaper(paperId);
             return;
         }
-        // Show checkboxes in modal body
+        // Show editable checkboxes in modal body
         let html = '<h3>Suggested topics</h3>';
         for (const t of data.suggestions) {
-            html += `<div style="margin:0.3rem 0"><label style="cursor:pointer;font-weight:normal">
-                <input type="checkbox" class="suggest-topic-cb" value="${esc(t)}" checked> ${esc(t)}
-            </label></div>`;
+            html += `<div style="margin:0.3rem 0;display:flex;align-items:center;gap:0.4rem">
+                <input type="checkbox" class="suggest-topic-cb" checked>
+                <input type="text" class="suggest-topic-name" value="${esc(t)}" style="flex:1;padding:0.2rem 0.4rem">
+            </div>`;
         }
         html += `<div class="modal-actions">
             <button onclick="applyTopicSuggestions('${esc(paperId)}')">Assign Selected</button>
@@ -321,10 +330,15 @@ async function suggestTopics(paperId) {
 }
 
 async function applyTopicSuggestions(paperId) {
-    const checked = Array.from(document.querySelectorAll('.suggest-topic-cb:checked'));
-    if (checked.length === 0) { openPaper(paperId); return; }
-
-    const selected = checked.map(cb => cb.value);
+    const rows = document.querySelectorAll('.suggest-topic-cb');
+    const selected = [];
+    rows.forEach(cb => {
+        if (!cb.checked) return;
+        const nameInput = cb.parentElement.querySelector('.suggest-topic-name');
+        const name = nameInput ? nameInput.value.trim() : '';
+        if (name) selected.push(name);
+    });
+    if (selected.length === 0) { openPaper(paperId); return; }
     const paperResp = await fetch(`/api/papers/${paperId}`);
     const paper = await paperResp.json();
     const newTopics = [...(paper.topics || [])];
