@@ -89,6 +89,7 @@ biblioteca/
 
 - **Private annotations** — marking a paper as private should move all related metadata (not just the annotation) into `data/private/`, with logic to handle the split and avoid duplication between public and private stores
 - **Paper finder** — given partial information (e.g. a title or topic), search for and fetch the PDF from arXiv or other open-access sources, especially useful when the original is behind a paywall
+- **Paper linking** — link related papers together (e.g. multi-part series, papers that build on each other), optionally ordered, with navigation between linked papers
 
 ## How It Was Built
 

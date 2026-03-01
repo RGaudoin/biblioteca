@@ -139,6 +139,16 @@ Paper text:
         json_match = re.search(r"\{[\s\S]*\}", response_text)
         if json_match:
             extracted = json.loads(json_match.group())
+            # Normalise tags: lowercase, spaces to hyphens, deduplicate
+            if extracted.get("tags"):
+                seen = set()
+                normalised = []
+                for tag in extracted["tags"]:
+                    t = re.sub(r"\s+", "-", tag.strip().lower())
+                    if t and t not in seen:
+                        seen.add(t)
+                        normalised.append(t)
+                extracted["tags"] = normalised
             # Merge with PDF metadata (Claude takes priority)
             result = {**pdf_meta, **{k: v for k, v in extracted.items() if v is not None}}
             if result.get("summary"):

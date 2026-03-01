@@ -1,0 +1,31 @@
+{
+  "id": "dhada-2022-weibull-recurrent-neural-networks",
+  "title": "Weibull recurrent neural networks for failure prognosis using histogram data",
+  "authors": [
+    "Maharshi Dhada",
+    "Ajith Kumar Parlikad",
+    "Olof Steinert",
+    "Tony Lindgren"
+  ],
+  "year": 2022,
+  "source": "Neural Computing and Applications",
+  "tags": [
+    "weibull recurrent neural networks",
+    "predictive maintenance",
+    "failure prognosis",
+    "histogram data",
+    "machine learning"
+  ],
+  "topics": [],
+  "summary": "This paper presents the first industrial application of Weibull time-to-event recurrent neural networks (WTTE-RNN) for failure prognosis, specifically for predicting turbocharger failures in heavy-duty trucks using histogram condition data. The study demonstrates that WTTE-RNN effectively incorporates both censored and uncensored failure data, and shows that clustering trucks into sub-fleets improves prediction performance when training data is sufficiently large. The paper also introduces a technique for preprocessing sparsely sampled histogram data to enable effective machine learning-based prognosis for predictive maintenance.",
+  "notes": null,
+  "private": false,
+  "added": "2026-03-01",
+  "pdf_filename": "dhada-2022-weibull-recurrent-neural-networks.pdf",
+  "url": null,
+  "arxiv_id": null,
+  "doi": null,
+  "import_source": "local",
+  "original_filename": "wtte_paper.pdf",
+  "pdf_hash": "fc73a6451748a64196e6966fe68d30ecd8a790e7c15239f1bef3c2168de0e546"
+}

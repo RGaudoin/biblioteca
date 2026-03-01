@@ -1,0 +1,26 @@
+{
+  "id": "2024-truncated-bptt",
+  "title": "Truncated BPTT",
+  "authors": [],
+  "year": 2024,
+  "source": "Naukri Code 360",
+  "tags": [
+    "truncated bptt",
+    "backpropagation through time",
+    "deep learning",
+    "neural-networks",
+    "recurrent-neural-networks"
+  ],
+  "topics": [],
+  "summary": null,
+  "notes": null,
+  "private": false,
+  "added": "2026-03-01",
+  "pdf_filename": "2024-truncated-bptt.pdf",
+  "url": null,
+  "arxiv_id": null,
+  "doi": null,
+  "import_source": "local",
+  "original_filename": "Truncated BPTT - Naukri Code 360.pdf",
+  "pdf_hash": "15b6bbf00fbc8eb4446682ebcc31008382ef57535fad29f82af605c71a0d32fb"
+}

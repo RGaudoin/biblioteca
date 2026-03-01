@@ -1,0 +1,28 @@
+{
+  "id": "fischer-2018-reinforcement-learning-financial-markets",
+  "title": "Reinforcement learning in financial markets - a survey",
+  "authors": [
+    "Thomas G. Fischer"
+  ],
+  "year": 2018,
+  "source": "FAU Discussion Papers in Economics, No. 12/2018, Friedrich-Alexander-Universität Erlangen-Nürnberg",
+  "tags": [
+    "financial markets",
+    "trading systems",
+    "machine learning",
+    "portfolio optimization",
+    "reinforcement-learning"
+  ],
+  "topics": [],
+  "summary": "This survey examines the application of reinforcement learning (RL) to financial markets, reviewing nearly 50 publications and categorizing approaches into three main types: critic-only, actor-only, and actor-critic methods. The paper highlights how RL overcomes limitations of supervised learning by integrating prediction and portfolio construction into a single optimized step while incorporating real-world constraints such as transaction costs and market liquidity.",
+  "notes": null,
+  "private": false,
+  "added": "2026-03-01",
+  "pdf_filename": "fischer-2018-reinforcement-learning-financial-markets.pdf",
+  "url": null,
+  "arxiv_id": null,
+  "doi": null,
+  "import_source": "local",
+  "original_filename": "rl_finance.pdf",
+  "pdf_hash": "1377aa54f68bd15ec34da14f699dc126f2b241428f57c57a16156a204081d508"
+}

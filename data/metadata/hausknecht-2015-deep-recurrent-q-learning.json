@@ -1,0 +1,29 @@
+{
+  "id": "hausknecht-2015-deep-recurrent-q-learning",
+  "title": "Deep Recurrent Q-Learning for Partially Observable MDPs",
+  "authors": [
+    "Matthew Hausknecht",
+    "Peter Stone"
+  ],
+  "year": 2015,
+  "source": "AAAI (Association for the Advancement of Artificial Intelligence)",
+  "tags": [
+    "deep reinforcement learning",
+    "atari games",
+    "lstm",
+    "recurrent-neural-networks",
+    "partially-observable-mdps"
+  ],
+  "topics": [],
+  "summary": "This paper introduces Deep Recurrent Q-Network (DRQN), which combines Long Short Term Memory (LSTM) with Deep Q-Networks to handle partially observable environments. DRQN replaces DQN's first fully-connected layer with an LSTM layer, enabling it to integrate information through time and successfully handle games where complete state information is unavailable. The approach is evaluated on standard Atari games and modified versions with flickering screens, demonstrating superior performance compared to DQN when dealing with partial observations.",
+  "notes": null,
+  "private": false,
+  "added": "2026-03-01",
+  "pdf_filename": "hausknecht-2015-deep-recurrent-q-learning.pdf",
+  "url": null,
+  "arxiv_id": null,
+  "doi": null,
+  "import_source": "local",
+  "original_filename": "1507.06527v4.pdf",
+  "pdf_hash": "f316b46c472f8a8a010820c58ce809cc519247fd22857c9a203578622bf4b968"
+}

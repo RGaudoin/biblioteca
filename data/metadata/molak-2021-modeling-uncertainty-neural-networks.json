@@ -7,11 +7,10 @@
   "year": 2021,
   "source": "Towards Data Science",
   "tags": [
-    "uncertainty quantification",
     "tensorflow probability",
-    "uncertainty-quantification",
     "bayesian-deep-learning",
-    "neural-networks"
+    "neural-networks",
+    "uncertainty-quantification"
   ],
   "topics": [],
   "summary": "This tutorial demonstrates how to model both aleatoric and epistemic uncertainty in neural networks using TensorFlow Probability by combining variational layers and distribution layers. The paper walks through a hands-on example of building a probabilistic model for non-linear heteroscedastic data using variational inference techniques with prior and posterior distributions.",

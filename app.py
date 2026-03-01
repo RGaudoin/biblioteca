@@ -3,6 +3,7 @@ Flask web application for Biblioteca — paper library.
 """
 
 import os
+import re
 from datetime import date
 
 from flask import Flask, jsonify, render_template, request, send_from_directory
@@ -620,8 +621,19 @@ def api_ai_bulk_extract():
 
         extracted = extract_metadata(str(pdf_path), config)
         if not extracted:
+            # Fallback: derive title from original filename
+            orig = paper.get("original_filename", "")
+            if orig:
+                fallback_title = re.sub(r"\.[^.]+$", "", orig).strip()
+                if fallback_title:
+                    paper["title"] = fallback_title
+                    save_paper(paper)
+                    results.append({"paper_id": paper["id"], "status": "updated",
+                                    "title": fallback_title,
+                                    "reason": "Title from filename (PDF text not extractable)"})
+                    continue
             results.append({"paper_id": paper["id"], "status": "failed",
-                            "reason": "Could not extract metadata"})
+                            "reason": "Could not extract text from PDF"})
             continue
 
         updated = False

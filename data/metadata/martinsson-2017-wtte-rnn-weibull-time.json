@@ -1,0 +1,28 @@
+{
+  "id": "martinsson-2017-wtte-rnn-weibull-time",
+  "title": "WTTE-RNN: Weibull Time To Event Recurrent Neural Network",
+  "authors": [
+    "Egil Martinsson"
+  ],
+  "year": 2017,
+  "source": "Chalmers University of Technology / University of Gothenburg",
+  "tags": [
+    "survival analysis",
+    "time-to-event prediction",
+    "weibull distribution",
+    "censored data",
+    "recurrent-neural-networks"
+  ],
+  "topics": [],
+  "summary": "This thesis proposes WTTE-RNN, a novel model for sequential prediction of time-to-event using Weibull distributions parameterized by recurrent neural networks. The framework handles continuous/discrete time, right censoring, recurrent events, and time-varying covariates common in applications like customer churn and failure prediction. The model is evaluated on simulated data and the CMAPSS jet engine dataset, demonstrating advantages over naive baseline methods.",
+  "notes": null,
+  "private": false,
+  "added": "2026-03-01",
+  "pdf_filename": "martinsson-2017-wtte-rnn-weibull-time.pdf",
+  "url": null,
+  "arxiv_id": null,
+  "doi": null,
+  "import_source": "local",
+  "original_filename": "wtte_masters_thesis.pdf",
+  "pdf_hash": "2f653a75743473b6d56d5c346c482d224e546fc0d6c3f2fb80cec149384d29b8"
+}
