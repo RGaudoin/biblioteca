@@ -24,5 +24,7 @@
   "doi": null,
   "import_source": "local",
   "original_filename": "POMDPs.pdf",
-  "pdf_hash": "6684481639045d941661c342219ccc1b79b2a3187fec84b6d9d9bd4ed33ab1bc"
+  "pdf_hash": "6684481639045d941661c342219ccc1b79b2a3187fec84b6d9d9bd4ed33ab1bc",
+  "content_type": "pdf",
+  "versionable": false
 }

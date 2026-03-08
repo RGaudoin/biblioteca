@@ -25,5 +25,7 @@
   "doi": null,
   "import_source": "local",
   "original_filename": "An Overview of ResNet and its Variants | by Vincent Fung | Towards Data Science.pdf",
-  "pdf_hash": "8e5f65aeaf07fd233dd477677089bf81d91fd116449b12b5a0ad2d2528d29af0"
+  "pdf_hash": "8e5f65aeaf07fd233dd477677089bf81d91fd116449b12b5a0ad2d2528d29af0",
+  "content_type": "pdf",
+  "versionable": false
 }

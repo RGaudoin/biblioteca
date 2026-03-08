@@ -26,5 +26,7 @@
   "doi": null,
   "import_source": "local",
   "original_filename": "RL_in_AlphaZero.pdf",
-  "pdf_hash": "ef765e5e00566841b112a446eddd7d099017579f5b171d508e61079755c155ac"
+  "pdf_hash": "ef765e5e00566841b112a446eddd7d099017579f5b171d508e61079755c155ac",
+  "content_type": "pdf",
+  "versionable": false
 }

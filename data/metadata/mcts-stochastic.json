@@ -30,5 +30,7 @@
   "import_source": "local",
   "original_filename": "MCTS_stochastic.pdf",
   "pdf_hash": "d4f90448d02181dc36ed0fe1e944fbb7301542db652ee779a104c420c7967480",
-  "summary_model": "claude-haiku-4-5-20251001"
+  "summary_model": "claude-haiku-4-5-20251001",
+  "content_type": "pdf",
+  "versionable": false
 }

@@ -54,8 +54,9 @@ def import_local(pdf_path, metadata_overrides=None, use_ai=False):
     if not pdf_path.exists():
         return {"success": False, "error": f"File not found: {pdf_path}"}
 
-    if not pdf_path.suffix.lower() == ".pdf":
-        return {"success": False, "error": f"Not a PDF file: {pdf_path}"}
+    from papers import ACCEPTED_EXTENSIONS
+    if pdf_path.suffix.lower() not in ACCEPTED_EXTENSIONS:
+        return {"success": False, "error": f"Unsupported file type: {pdf_path.suffix}"}
 
     # Check for 0-byte files
     if pdf_path.stat().st_size == 0:
@@ -84,13 +85,17 @@ def import_local(pdf_path, metadata_overrides=None, use_ai=False):
     authors = overrides.get("authors") or ai_metadata.get("authors", [])
     year = overrides.get("year") or ai_metadata.get("year")
 
-    # Generate ID and filename
-    paper_id = generate_id(title, authors, year, fallback=pdf_path.stem)
-    pdf_filename = normalise_filename(title, authors, year, original=pdf_path.name)
+    # Generate ID and filename — prefer original_filename over temp path
+    orig_name = overrides.get("original_filename") or pdf_path.name
+    paper_id = generate_id(title, authors, year, fallback=Path(orig_name).stem)
+    pdf_filename = normalise_filename(title, authors, year, original=orig_name)
 
-    # Copy PDF to papers directory
-    dest = PAPERS_DIR / pdf_filename
-    PAPERS_DIR.mkdir(parents=True, exist_ok=True)
+    # Copy file to appropriate directory
+    from papers import VERSIONABLE_EXTENSIONS, DOCUMENTS_DIR
+    ext = pdf_path.suffix.lower()
+    target_dir = DOCUMENTS_DIR if ext in VERSIONABLE_EXTENSIONS else PAPERS_DIR
+    dest = target_dir / pdf_filename
+    target_dir.mkdir(parents=True, exist_ok=True)
     shutil.copy2(str(pdf_path), str(dest))
 
     # Build metadata
@@ -108,7 +113,7 @@ def import_local(pdf_path, metadata_overrides=None, use_ai=False):
         "arxiv_id": overrides.get("arxiv_id"),
         "doi": overrides.get("doi"),
         "import_source": overrides.get("import_source", "local"),
-        "original_filename": pdf_path.name,
+        "original_filename": overrides.get("original_filename") or pdf_path.name,
         "pdf_hash": compute_hash(str(dest)),
     }
 

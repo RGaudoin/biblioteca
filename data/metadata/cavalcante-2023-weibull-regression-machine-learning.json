@@ -28,5 +28,7 @@
   "doi": null,
   "import_source": "local",
   "original_filename": "weibull_regression.pdf",
-  "pdf_hash": "d2835b8d6f939873901bc2ef26a7a4c3efab932b874a9b4bc9f2fcac21c3bda5"
+  "pdf_hash": "d2835b8d6f939873901bc2ef26a7a4c3efab932b874a9b4bc9f2fcac21c3bda5",
+  "content_type": "pdf",
+  "versionable": false
 }

@@ -18,5 +18,7 @@
   "doi": null,
   "import_source": "reading-list",
   "original_filename": null,
-  "pdf_hash": null
+  "pdf_hash": null,
+  "content_type": "unknown",
+  "versionable": false
 }

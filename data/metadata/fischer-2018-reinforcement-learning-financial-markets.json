@@ -24,5 +24,7 @@
   "doi": null,
   "import_source": "local",
   "original_filename": "rl_finance.pdf",
-  "pdf_hash": "1377aa54f68bd15ec34da14f699dc126f2b241428f57c57a16156a204081d508"
+  "pdf_hash": "1377aa54f68bd15ec34da14f699dc126f2b241428f57c57a16156a204081d508",
+  "content_type": "pdf",
+  "versionable": false
 }

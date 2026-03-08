@@ -27,5 +27,7 @@
   "doi": null,
   "import_source": "local",
   "original_filename": "information-pomdp-rl.pdf",
-  "pdf_hash": "247d75b379d18f5355921a1ca2884551210927e7bfa6e9d6878e0ee24a8ec8f5"
+  "pdf_hash": "247d75b379d18f5355921a1ca2884551210927e7bfa6e9d6878e0ee24a8ec8f5",
+  "content_type": "pdf",
+  "versionable": false
 }

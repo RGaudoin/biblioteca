@@ -25,5 +25,7 @@
   "import_source": "local",
   "original_filename": "td_TF_prob_1.pdf",
   "pdf_hash": "dc0e5f93b7389b386c04b5d5978fd0307088b02ec72fc97394c1cea829d5de09",
-  "summary_model": "claude-sonnet-4-20250514"
+  "summary_model": "claude-sonnet-4-20250514",
+  "content_type": "pdf",
+  "versionable": false
 }

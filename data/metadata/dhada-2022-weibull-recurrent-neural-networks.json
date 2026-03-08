@@ -27,5 +27,7 @@
   "doi": null,
   "import_source": "local",
   "original_filename": "wtte_paper.pdf",
-  "pdf_hash": "fc73a6451748a64196e6966fe68d30ecd8a790e7c15239f1bef3c2168de0e546"
+  "pdf_hash": "fc73a6451748a64196e6966fe68d30ecd8a790e7c15239f1bef3c2168de0e546",
+  "content_type": "pdf",
+  "versionable": false
 }

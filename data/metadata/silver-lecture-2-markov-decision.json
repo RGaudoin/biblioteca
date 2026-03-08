@@ -23,5 +23,7 @@
   "doi": null,
   "import_source": "local",
   "original_filename": "MDP.pdf",
-  "pdf_hash": "e66a0f67021ed3be71c508cc7a4f35e0fabff4b67d7494e938a462f66aac615a"
+  "pdf_hash": "e66a0f67021ed3be71c508cc7a4f35e0fabff4b67d7494e938a462f66aac615a",
+  "content_type": "pdf",
+  "versionable": false
 }

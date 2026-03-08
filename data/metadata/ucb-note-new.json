@@ -27,5 +27,7 @@
   "import_source": "local",
   "original_filename": "UCB_note_new.pdf",
   "pdf_hash": "caec23df649b2abf28c084794cc8e7204de35724cc337a8a9de0c340b725a61e",
-  "summary_model": "claude-sonnet-4-20250514"
+  "summary_model": "claude-sonnet-4-20250514",
+  "content_type": "pdf",
+  "versionable": false
 }

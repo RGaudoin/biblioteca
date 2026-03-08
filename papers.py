@@ -18,7 +18,33 @@ METADATA_DIR = DATA_DIR / "metadata"
 COLLECTIONS_DIR = DATA_DIR / "collections"
 TOPICS_DIR = DATA_DIR / "topics"
 PRIVATE_DIR = DATA_DIR / "private"
+DOCUMENTS_DIR = DATA_DIR / "documents"
 CONFIG_FILE = DATA_DIR / "config.json"
+
+# Content type detection
+VERSIONABLE_EXTENSIONS = {".txt", ".md", ".tex", ".org", ".rst", ".bib", ".csv"}
+ACCEPTED_EXTENSIONS = {".pdf"} | VERSIONABLE_EXTENSIONS
+
+
+def detect_content_type(filename):
+    """Detect content type and versionability from file extension.
+
+    Returns (content_type, versionable) tuple.
+    """
+    ext = Path(filename).suffix.lower() if filename else ""
+    type_map = {
+        ".pdf": "pdf",
+        ".txt": "text",
+        ".md": "markdown",
+        ".tex": "latex",
+        ".org": "org",
+        ".rst": "rst",
+        ".bib": "bibtex",
+        ".csv": "csv",
+    }
+    content_type = type_map.get(ext, "unknown")
+    versionable = ext in VERSIONABLE_EXTENSIONS
+    return content_type, versionable
 
 # Default configuration
 DEFAULT_CONFIG = {
@@ -33,7 +59,7 @@ DEFAULT_CONFIG = {
 
 def _ensure_dirs():
     """Create data directories if they don't exist."""
-    for d in [PAPERS_DIR, METADATA_DIR, COLLECTIONS_DIR, TOPICS_DIR, PRIVATE_DIR]:
+    for d in [PAPERS_DIR, METADATA_DIR, COLLECTIONS_DIR, TOPICS_DIR, PRIVATE_DIR, DOCUMENTS_DIR]:
         d.mkdir(parents=True, exist_ok=True)
 
 
@@ -133,26 +159,33 @@ def generate_id(title=None, authors=None, year=None, fallback=None):
 
 
 def normalise_filename(title=None, authors=None, year=None, original=None):
-    """Generate a normalised PDF filename like 'hinton-2006-deep-belief.pdf'.
+    """Generate a normalised filename like 'hinton-2006-deep-belief.pdf'.
 
-    Falls back to sanitised original filename if no metadata available.
+    Preserves the original file extension. Falls back to sanitised original
+    filename if no metadata available.
     """
+    ext = Path(original).suffix.lower() if original else ".pdf"
+    if not ext:
+        ext = ".pdf"
+
     if title and (authors or year):
         base = generate_id(title, authors, year)
     elif original:
-        # Strip extension, slugify, re-add .pdf
         stem = Path(original).stem
         base = _slugify(stem) or "paper"
     else:
         base = f"paper-{date.today().isoformat()}"
 
-    filename = f"{base}.pdf"
+    # Versionable text files go to documents dir, others to papers dir
+    target_dir = DOCUMENTS_DIR if ext in VERSIONABLE_EXTENSIONS else PAPERS_DIR
+
+    filename = f"{base}{ext}"
 
     # Ensure uniqueness
     base_name = base
     counter = 2
-    while (PAPERS_DIR / filename).exists():
-        filename = f"{base_name}-{counter}.pdf"
+    while (target_dir / filename).exists():
+        filename = f"{base_name}-{counter}{ext}"
         counter += 1
 
     return filename
@@ -171,6 +204,9 @@ def create_paper_stub(paper_id, pdf_filename, **kwargs):
     Returns the metadata dict.
     """
     _ensure_dirs()
+    # Detect content type from filename
+    orig = kwargs.get("original_filename") or pdf_filename or ""
+    auto_type, auto_versionable = detect_content_type(orig)
     metadata = {
         "id": paper_id,
         "title": kwargs.get("title"),
@@ -190,9 +226,28 @@ def create_paper_stub(paper_id, pdf_filename, **kwargs):
         "import_source": kwargs.get("import_source", "manual"),
         "original_filename": kwargs.get("original_filename"),
         "pdf_hash": kwargs.get("pdf_hash"),
+        "content_type": kwargs.get("content_type", auto_type),
+        "versionable": kwargs.get("versionable", auto_versionable),
     }
     save_paper(metadata)
     return metadata
+
+
+def resolve_file_path(metadata):
+    """Resolve the full path to a paper's content file.
+
+    Checks both data/documents/ (versionable text) and data/papers/ (binary).
+    Returns Path if found, None if file doesn't exist or no filename set.
+    """
+    fn = metadata.get("pdf_filename")
+    if not fn:
+        return None
+    # Check documents dir first for versionable types, then papers dir
+    for d in [DOCUMENTS_DIR, PAPERS_DIR]:
+        path = d / fn
+        if path.exists():
+            return path
+    return None
 
 
 def load_paper(paper_id):
@@ -225,11 +280,11 @@ def delete_paper(paper_id, delete_pdf=True):
     # Delete metadata
     _metadata_path(paper_id).unlink()
 
-    # Delete PDF if requested
+    # Delete content file if requested
     if delete_pdf and metadata.get("pdf_filename"):
-        pdf_path = PAPERS_DIR / metadata["pdf_filename"]
-        if pdf_path.exists():
-            pdf_path.unlink()
+        file_path = resolve_file_path(metadata)
+        if file_path and file_path.exists():
+            file_path.unlink()
 
     return True
 
@@ -675,7 +730,7 @@ def find_duplicates():
     for p in papers:
         # Check for orphan: metadata references a PDF that doesn't exist
         pdf_fn = p.get("pdf_filename")
-        if pdf_fn and not (PAPERS_DIR / pdf_fn).exists():
+        if pdf_fn and not resolve_file_path(p):
             orphans.append(p)
 
         h = p.get("pdf_hash")
@@ -779,7 +834,7 @@ def merge_papers(keep_id, remove_ids):
 
         # If keeper has no PDF but other does, take it
         if not keeper.get("pdf_filename") and other.get("pdf_filename"):
-            if (PAPERS_DIR / other["pdf_filename"]).exists():
+            if resolve_file_path(other):
                 keeper["pdf_filename"] = other["pdf_filename"]
                 # Don't delete the PDF when removing the other paper
                 delete_paper(rid, delete_pdf=False)
@@ -789,3 +844,88 @@ def merge_papers(keep_id, remove_ids):
 
     save_paper(keeper)
     return keeper
+
+
+def check_consistency():
+    """Check library consistency: orphan files, missing files, type mismatches.
+
+    Returns dict with lists of issues found.
+    """
+    papers = list_papers()
+    issues = []
+
+    # Collect all filenames referenced by metadata
+    referenced_files = set()
+
+    for p in papers:
+        fn = p.get("pdf_filename")
+        if not fn:
+            continue
+        referenced_files.add(fn)
+
+        # Check file exists
+        resolved = resolve_file_path(p)
+        if not resolved:
+            issues.append({
+                "type": "missing_file",
+                "paper_id": p["id"],
+                "filename": fn,
+                "message": f"File '{fn}' referenced by metadata but not found on disk",
+            })
+            continue
+
+        # Check file is in the correct directory for its type
+        ext = Path(fn).suffix.lower()
+        expected_dir = DOCUMENTS_DIR if ext in VERSIONABLE_EXTENSIONS else PAPERS_DIR
+        if resolved.parent != expected_dir:
+            issues.append({
+                "type": "wrong_directory",
+                "paper_id": p["id"],
+                "filename": fn,
+                "message": f"File '{fn}' is in {resolved.parent.name}/ but should be in {expected_dir.name}/",
+            })
+
+        # Check content_type field matches actual extension
+        detected_type, detected_ver = detect_content_type(fn)
+        if p.get("content_type") and p["content_type"] != detected_type:
+            issues.append({
+                "type": "type_mismatch",
+                "paper_id": p["id"],
+                "filename": fn,
+                "message": f"Metadata says '{p['content_type']}' but file extension suggests '{detected_type}'",
+            })
+
+    # Check for orphan files (files with no metadata)
+    for directory, dir_name in [(PAPERS_DIR, "papers"), (DOCUMENTS_DIR, "documents")]:
+        if not directory.exists():
+            continue
+        for f in directory.iterdir():
+            if f.name.startswith("."):
+                continue
+            if f.name not in referenced_files:
+                issues.append({
+                    "type": "orphan_file",
+                    "filename": f.name,
+                    "directory": dir_name,
+                    "message": f"File '{f.name}' in {dir_name}/ has no matching metadata",
+                })
+
+    return {"issues": issues, "total_papers": len(papers)}
+
+
+def backfill_content_types():
+    """Add content_type and versionable fields to papers that lack them.
+
+    Returns count of papers updated.
+    """
+    updated = 0
+    for p in list_papers():
+        if "content_type" in p and "versionable" in p:
+            continue
+        fn = p.get("pdf_filename") or p.get("original_filename") or ""
+        ct, ver = detect_content_type(fn)
+        p["content_type"] = p.get("content_type", ct)
+        p["versionable"] = p.get("versionable", ver)
+        save_paper(p)
+        updated += 1
+    return updated

@@ -87,7 +87,10 @@ biblioteca/
 
 ## TODO
 
-- **Private annotations** — marking a paper as private should move all related metadata (not just the annotation) into `data/private/`, with logic to handle the split and avoid duplication between public and private stores
+- **Content type awareness** — detect whether a document is binary (PDF) or versionable text (txt, md, tex, org); auto-detect on import with manual override per paper
+- **Version text content** — git-track versionable text documents alongside metadata; binary files stay gitignored as now
+- **Consistency checker** — maintenance tool to report: metadata without files, files without metadata, mismatched private/public state
+- **Private content separation** — marking a paper private moves metadata and any versioned content to `data/private/` (gitignored); with optional encrypted mirror in `data/private-encrypted/` (git-tracked) for backup
 - **Paper finder** — given partial information (e.g. a title or topic), search for and fetch the PDF from arXiv or other open-access sources, especially useful when the original is behind a paywall
 - **Paper linking** — link related papers together (e.g. multi-part series, papers that build on each other), optionally ordered, with navigation between linked papers
 
