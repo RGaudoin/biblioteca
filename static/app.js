@@ -113,6 +113,7 @@ function renderPaperList(papers, total) {
         const badge = !p.pdf_filename ? '<span class="badge-ref">REF</span>'
             : !p.title ? '<span class="badge-new">NEW</span>'
             : `<span class="badge-pdf">${formatLabel}</span>`;
+        const privateBadge = p.private ? ' <span class="badge-private">PRIVATE</span>' : '';
         const tags = (p.tags || []).map(t => `<span class="tag clickable" onclick="event.stopPropagation(); filterByTag('${esc(t)}')">${esc(t)}</span>`).join('');
         const topics = (p.topics || []).map(t => `<span class="tag topic clickable" onclick="event.stopPropagation(); filterByTopic('${esc(t)}')">${esc(t)}</span>`).join('');
 
@@ -121,7 +122,7 @@ function renderPaperList(papers, total) {
             : '';
 
         return `<div class="paper-card" onclick="${selectionMode ? '' : "openPaper('" + esc(p.id) + "')"}" style="${selectionMode ? 'cursor:default' : ''}">
-            <div class="paper-title${titleClass}">${checkbox}${badge} ${esc(title)}</div>
+            <div class="paper-title${titleClass}">${checkbox}${badge}${privateBadge} ${esc(title)}</div>
             <div class="paper-meta">${esc(meta)}</div>
             ${(tags || topics) ? `<div class="paper-tags">${tags}${topics}</div>` : ''}
         </div>`;
@@ -248,12 +249,17 @@ function renderPaperModal(p) {
            <button onclick="suggestTopics('${esc(p.id)}')">Suggest Topics (AI)</button>`
         : '';
 
+    const privacyBtn = p.private
+        ? `<button onclick="togglePrivacy('${esc(p.id)}')" style="color:var(--warning,#b86e00)">Make Public</button>`
+        : `<button onclick="togglePrivacy('${esc(p.id)}')">Make Private</button>`;
+
     document.getElementById('modal-body').innerHTML = `
         ${fieldsHtml}
         <div class="modal-actions">
             ${pdfBtn}
             ${aiBtn}
             <button onclick="editPaper('${esc(p.id)}')">Edit</button>
+            ${privacyBtn}
             <button onclick="deletePaper('${esc(p.id)}')" style="color:var(--error)">Delete</button>
         </div>
     `;
@@ -428,6 +434,25 @@ async function saveEdit(paperId) {
             refreshLibrary();
         } else {
             alert('Save failed: ' + (result.error || 'Unknown error'));
+        }
+    } catch (err) {
+        alert('Error: ' + err.message);
+    }
+}
+
+async function togglePrivacy(paperId) {
+    try {
+        const resp = await fetch(`/api/papers/${paperId}/toggle-private`, { method: 'POST' });
+        const data = await resp.json();
+        if (data.success) {
+            const state = data.paper.private ? 'private' : 'public';
+            if (data.warnings && data.warnings.length > 0) {
+                alert(`Moved to ${state}.\n\nWarnings:\n${data.warnings.join('\n')}`);
+            }
+            openPaper(paperId);
+            refreshLibrary();
+        } else {
+            alert('Error: ' + (data.error || 'Unknown error'));
         }
     } catch (err) {
         alert('Error: ' + err.message);

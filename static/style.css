@@ -271,6 +271,17 @@ label {
     vertical-align: middle;
 }
 
+.badge-private {
+    display: inline-block;
+    background: #7c3aed;
+    color: white;
+    padding: 0 0.3rem;
+    border-radius: 3px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    vertical-align: middle;
+}
+
 .paper-title.unprocessed,
 h2.unprocessed {
     font-style: italic;

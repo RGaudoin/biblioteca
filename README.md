@@ -41,6 +41,8 @@ python app.py
 # Open http://localhost:5001
 ```
 
+Works on Linux, macOS, and Windows — no platform-specific dependencies.
+
 You'll need a Claude API key for AI features (summarisation, metadata extraction, topic suggestions). Add it in Settings once the app is running.
 
 ## CLI

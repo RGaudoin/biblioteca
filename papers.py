@@ -18,6 +18,8 @@ METADATA_DIR = DATA_DIR / "metadata"
 COLLECTIONS_DIR = DATA_DIR / "collections"
 TOPICS_DIR = DATA_DIR / "topics"
 PRIVATE_DIR = DATA_DIR / "private"
+PRIVATE_METADATA_DIR = PRIVATE_DIR / "metadata"
+PRIVATE_DOCUMENTS_DIR = PRIVATE_DIR / "documents"
 DOCUMENTS_DIR = DATA_DIR / "documents"
 CONFIG_FILE = DATA_DIR / "config.json"
 
@@ -59,7 +61,8 @@ DEFAULT_CONFIG = {
 
 def _ensure_dirs():
     """Create data directories if they don't exist."""
-    for d in [PAPERS_DIR, METADATA_DIR, COLLECTIONS_DIR, TOPICS_DIR, PRIVATE_DIR, DOCUMENTS_DIR]:
+    for d in [PAPERS_DIR, METADATA_DIR, COLLECTIONS_DIR, TOPICS_DIR,
+             PRIVATE_DIR, PRIVATE_METADATA_DIR, PRIVATE_DOCUMENTS_DIR, DOCUMENTS_DIR]:
         d.mkdir(parents=True, exist_ok=True)
 
 
@@ -193,9 +196,24 @@ def normalise_filename(title=None, authors=None, year=None, original=None):
 
 # --- Paper CRUD ---
 
-def _metadata_path(paper_id):
+def _metadata_path(paper_id, private=False):
     """Get path to metadata JSON file for a paper."""
-    return METADATA_DIR / f"{paper_id}.json"
+    base = PRIVATE_METADATA_DIR if private else METADATA_DIR
+    return base / f"{paper_id}.json"
+
+
+def _find_metadata_path(paper_id):
+    """Find a paper's metadata file, checking both public and private dirs.
+
+    Returns (path, is_private) tuple, or (None, None) if not found.
+    """
+    public = METADATA_DIR / f"{paper_id}.json"
+    if public.exists():
+        return public, False
+    private = PRIVATE_METADATA_DIR / f"{paper_id}.json"
+    if private.exists():
+        return private, True
+    return None, None
 
 
 def create_paper_stub(paper_id, pdf_filename, **kwargs):
@@ -236,14 +254,13 @@ def create_paper_stub(paper_id, pdf_filename, **kwargs):
 def resolve_file_path(metadata):
     """Resolve the full path to a paper's content file.
 
-    Checks both data/documents/ (versionable text) and data/papers/ (binary).
+    Checks private dirs, documents dir, and papers dir.
     Returns Path if found, None if file doesn't exist or no filename set.
     """
     fn = metadata.get("pdf_filename")
     if not fn:
         return None
-    # Check documents dir first for versionable types, then papers dir
-    for d in [DOCUMENTS_DIR, PAPERS_DIR]:
+    for d in [PRIVATE_DOCUMENTS_DIR, DOCUMENTS_DIR, PAPERS_DIR]:
         path = d / fn
         if path.exists():
             return path
@@ -251,21 +268,67 @@ def resolve_file_path(metadata):
 
 
 def load_paper(paper_id):
-    """Load a paper's metadata by ID. Returns None if not found."""
-    path = _metadata_path(paper_id)
-    if not path.exists():
+    """Load a paper's metadata by ID. Checks both public and private dirs."""
+    path, _ = _find_metadata_path(paper_id)
+    if path is None:
         return None
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
 
 
 def save_paper(metadata):
-    """Save a paper's metadata."""
+    """Save a paper's metadata to the appropriate directory (public or private)."""
     _ensure_dirs()
     paper_id = metadata["id"]
-    path = _metadata_path(paper_id)
+    is_private = metadata.get("private", False)
+    path = _metadata_path(paper_id, private=is_private)
     with open(path, "w", encoding="utf-8") as f:
         json.dump(metadata, f, ensure_ascii=False, indent=2)
+
+
+def toggle_privacy(paper_id):
+    """Toggle a paper between public and private.
+
+    Moves metadata between data/metadata/ and data/private/metadata/.
+    Moves versionable content between data/documents/ and data/private/documents/.
+    PDFs stay in data/papers/ (already gitignored).
+
+    Returns (metadata, warnings) tuple. Warnings list any issues encountered.
+    """
+    import shutil
+    _ensure_dirs()
+    metadata = load_paper(paper_id)
+    if metadata is None:
+        return None, ["Paper not found"]
+
+    was_private = metadata.get("private", False)
+    now_private = not was_private
+    warnings = []
+
+    # Move metadata file
+    old_meta_path, _ = _find_metadata_path(paper_id)
+    new_meta_path = _metadata_path(paper_id, private=now_private)
+    if new_meta_path.exists():
+        warnings.append(f"Metadata already exists at destination; overwriting")
+    if old_meta_path and old_meta_path.exists():
+        old_meta_path.rename(new_meta_path)
+
+    # Move versionable content file (not PDFs — they're already gitignored)
+    fn = metadata.get("pdf_filename")
+    if fn and metadata.get("versionable"):
+        file_path = resolve_file_path(metadata)
+        if file_path and file_path.exists():
+            dest_dir = PRIVATE_DOCUMENTS_DIR if now_private else DOCUMENTS_DIR
+            dest_path = dest_dir / fn
+            if dest_path.exists() and dest_path != file_path:
+                warnings.append(f"Content file already exists at destination; overwriting")
+            shutil.move(str(file_path), str(dest_path))
+
+    # Update the private flag and save
+    metadata["private"] = now_private
+    save_paper(metadata)
+
+    return metadata, warnings
 
 
 def delete_paper(paper_id, delete_pdf=True):
@@ -277,8 +340,10 @@ def delete_paper(paper_id, delete_pdf=True):
     if metadata is None:
         return False
 
-    # Delete metadata
-    _metadata_path(paper_id).unlink()
+    # Delete metadata from whichever directory it's in
+    path, _ = _find_metadata_path(paper_id)
+    if path:
+        path.unlink()
 
     # Delete content file if requested
     if delete_pdf and metadata.get("pdf_filename"):
@@ -303,14 +368,15 @@ def list_papers(tag=None, topic=None, search=None, sort_by="added", reverse=True
     """
     _ensure_dirs()
     papers = []
-    for path in METADATA_DIR.glob("*.json"):
-        if path.name == ".gitkeep":
-            continue
-        try:
-            with open(path, "r", encoding="utf-8") as f:
-                papers.append(json.load(f))
-        except (json.JSONDecodeError, IOError):
-            continue
+    for metadata_dir in [METADATA_DIR, PRIVATE_METADATA_DIR]:
+        for path in metadata_dir.glob("*.json"):
+            if path.name == ".gitkeep":
+                continue
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    papers.append(json.load(f))
+            except (json.JSONDecodeError, IOError):
+                continue
 
     # Filter by tag
     if tag:
@@ -874,15 +940,30 @@ def check_consistency():
             })
             continue
 
-        # Check file is in the correct directory for its type
+        # Check file is in the correct directory for its type and privacy
         ext = Path(fn).suffix.lower()
-        expected_dir = DOCUMENTS_DIR if ext in VERSIONABLE_EXTENSIONS else PAPERS_DIR
+        is_private = p.get("private", False)
+        if is_private:
+            expected_dir = PRIVATE_DOCUMENTS_DIR if ext in VERSIONABLE_EXTENSIONS else PAPERS_DIR
+        else:
+            expected_dir = DOCUMENTS_DIR if ext in VERSIONABLE_EXTENSIONS else PAPERS_DIR
         if resolved.parent != expected_dir:
             issues.append({
                 "type": "wrong_directory",
                 "paper_id": p["id"],
                 "filename": fn,
                 "message": f"File '{fn}' is in {resolved.parent.name}/ but should be in {expected_dir.name}/",
+            })
+
+        # Check metadata file is in the correct directory for its privacy flag
+        meta_path, meta_is_private = _find_metadata_path(p["id"])
+        if meta_path and meta_is_private != is_private:
+            expected = "private" if is_private else "public"
+            actual = "private" if meta_is_private else "public"
+            issues.append({
+                "type": "privacy_mismatch",
+                "paper_id": p["id"],
+                "message": f"Metadata has private={is_private} but file is in {actual} directory",
             })
 
         # Check content_type field matches actual extension
@@ -896,7 +977,8 @@ def check_consistency():
             })
 
     # Check for orphan files (files with no metadata)
-    for directory, dir_name in [(PAPERS_DIR, "papers"), (DOCUMENTS_DIR, "documents")]:
+    for directory, dir_name in [(PAPERS_DIR, "papers"), (DOCUMENTS_DIR, "documents"),
+                                (PRIVATE_DOCUMENTS_DIR, "private/documents")]:
         if not directory.exists():
             continue
         for f in directory.iterdir():

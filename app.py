@@ -118,6 +118,16 @@ def api_delete_paper(paper_id):
     return jsonify({"error": "Paper not found"}), 404
 
 
+@app.route("/api/papers/<paper_id>/toggle-private", methods=["POST"])
+def api_toggle_private(paper_id):
+    """Toggle a paper between public and private."""
+    from papers import toggle_privacy
+    metadata, warnings = toggle_privacy(paper_id)
+    if metadata is None:
+        return jsonify({"success": False, "error": "Paper not found"}), 404
+    return jsonify({"success": True, "paper": metadata, "warnings": warnings})
+
+
 # --- Search & Browse ---
 
 @app.route("/api/search")
@@ -922,10 +932,11 @@ def api_test_api_key():
 
 @app.route("/api/pdf/<filename>")
 def api_serve_file(filename):
-    from papers import DOCUMENTS_DIR
-    # Check documents dir first (versionable text), then papers dir (binary)
-    if (DOCUMENTS_DIR / filename).exists():
-        return send_from_directory(DOCUMENTS_DIR, filename)
+    from papers import DOCUMENTS_DIR, PRIVATE_DOCUMENTS_DIR
+    # Check private docs, public docs, then papers dir
+    for d in [PRIVATE_DOCUMENTS_DIR, DOCUMENTS_DIR, PAPERS_DIR]:
+        if (d / filename).exists():
+            return send_from_directory(d, filename)
     return send_from_directory(PAPERS_DIR, filename)
 
 
