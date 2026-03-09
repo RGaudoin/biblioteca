@@ -24,5 +24,7 @@
   "doi": null,
   "import_source": "local",
   "original_filename": "PPO_medium2.pdf",
-  "pdf_hash": "5ff01f986809899db0bf8a2c19b213e53ef40ef72e6354a5f5b7ad210b9b8ca3"
+  "pdf_hash": "5ff01f986809899db0bf8a2c19b213e53ef40ef72e6354a5f5b7ad210b9b8ca3",
+  "content_type": "pdf",
+  "versionable": false
 }

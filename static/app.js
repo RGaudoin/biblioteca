@@ -108,9 +108,12 @@ function renderPaperList(papers, total) {
         const authors = (p.authors || []).join(', ');
         const year = p.year || '';
         const meta = [authors, year, p.source].filter(Boolean).join(' · ');
+        const formatLabel = (p.content_type && p.content_type !== 'pdf' && p.content_type !== 'unknown')
+            ? p.content_type.toUpperCase() : 'PDF';
         const badge = !p.pdf_filename ? '<span class="badge-ref">REF</span>'
             : !p.title ? '<span class="badge-new">NEW</span>'
-            : '<span class="badge-pdf">PDF</span>';
+            : `<span class="badge-pdf">${formatLabel}</span>`;
+        const privateBadge = p.private ? ' <span class="badge-private">PRIVATE</span>' : '';
         const tags = (p.tags || []).map(t => `<span class="tag clickable" onclick="event.stopPropagation(); filterByTag('${esc(t)}')">${esc(t)}</span>`).join('');
         const topics = (p.topics || []).map(t => `<span class="tag topic clickable" onclick="event.stopPropagation(); filterByTopic('${esc(t)}')">${esc(t)}</span>`).join('');
 
@@ -119,7 +122,7 @@ function renderPaperList(papers, total) {
             : '';
 
         return `<div class="paper-card" onclick="${selectionMode ? '' : "openPaper('" + esc(p.id) + "')"}" style="${selectionMode ? 'cursor:default' : ''}">
-            <div class="paper-title${titleClass}">${checkbox}${badge} ${esc(title)}</div>
+            <div class="paper-title${titleClass}">${checkbox}${badge}${privateBadge} ${esc(title)}</div>
             <div class="paper-meta">${esc(meta)}</div>
             ${(tags || topics) ? `<div class="paper-tags">${tags}${topics}</div>` : ''}
         </div>`;
@@ -222,7 +225,8 @@ function renderPaperModal(p) {
         { label: 'URL', value: p.url ? `<a href="${esc(p.url)}" target="_blank">${esc(p.url)}</a>` : null, html: true },
         { label: 'arXiv ID', value: p.arxiv_id },
         { label: 'DOI', value: p.doi },
-        { label: 'PDF', value: p.pdf_filename },
+        { label: 'File', value: p.pdf_filename },
+        { label: 'Type', value: p.content_type ? `${p.content_type}${p.versionable ? ' (versioned)' : ''}` : null },
         { label: 'Added', value: p.added },
         { label: 'Import source', value: p.import_source },
     ];
@@ -235,8 +239,9 @@ function renderPaperModal(p) {
         </div>`)
         .join('');
 
+    const viewLabel = p.content_type === 'pdf' ? 'View PDF' : 'View Document';
     const pdfBtn = p.pdf_filename
-        ? `<button onclick="window.open('/api/pdf/${encodeURIComponent(p.pdf_filename)}', '_blank')">View PDF</button>`
+        ? `<button onclick="window.open('/api/pdf/${encodeURIComponent(p.pdf_filename)}', '_blank')">${viewLabel}</button>`
         : '';
     const aiBtn = p.pdf_filename
         ? `<button onclick="extractMetadata('${esc(p.id)}')">Extract Metadata (AI)</button>
@@ -244,12 +249,17 @@ function renderPaperModal(p) {
            <button onclick="suggestTopics('${esc(p.id)}')">Suggest Topics (AI)</button>`
         : '';
 
+    const privacyBtn = p.private
+        ? `<button onclick="togglePrivacy('${esc(p.id)}')" style="color:var(--warning,#b86e00)">Make Public</button>`
+        : `<button onclick="togglePrivacy('${esc(p.id)}')">Make Private</button>`;
+
     document.getElementById('modal-body').innerHTML = `
         ${fieldsHtml}
         <div class="modal-actions">
             ${pdfBtn}
             ${aiBtn}
             <button onclick="editPaper('${esc(p.id)}')">Edit</button>
+            ${privacyBtn}
             <button onclick="deletePaper('${esc(p.id)}')" style="color:var(--error)">Delete</button>
         </div>
     `;
@@ -296,7 +306,7 @@ async function summarisePaper(paperId) {
 }
 
 async function suggestTopics(paperId) {
-    showModalLoading('Analysing paper for topic suggestions...');
+    showModalLoading('Analysing document for topic suggestions...');
     try {
         const resp = await fetch(`/api/ai/suggest-topics/${paperId}`, { method: 'POST' });
         const data = await resp.json();
@@ -306,7 +316,7 @@ async function suggestTopics(paperId) {
             return;
         }
         if (data.suggestions.length === 0) {
-            alert(data.message || 'No matching topics found for this paper.');
+            alert(data.message || 'No topic suggestions returned.');
             openPaper(paperId);
             return;
         }
@@ -424,6 +434,25 @@ async function saveEdit(paperId) {
             refreshLibrary();
         } else {
             alert('Save failed: ' + (result.error || 'Unknown error'));
+        }
+    } catch (err) {
+        alert('Error: ' + err.message);
+    }
+}
+
+async function togglePrivacy(paperId) {
+    try {
+        const resp = await fetch(`/api/papers/${paperId}/toggle-private`, { method: 'POST' });
+        const data = await resp.json();
+        if (data.success) {
+            const state = data.paper.private ? 'private' : 'public';
+            if (data.warnings && data.warnings.length > 0) {
+                alert(`Moved to ${state}.\n\nWarnings:\n${data.warnings.join('\n')}`);
+            }
+            openPaper(paperId);
+            refreshLibrary();
+        } else {
+            alert('Error: ' + (data.error || 'Unknown error'));
         }
     } catch (err) {
         alert('Error: ' + err.message);
@@ -1669,6 +1698,39 @@ async function deleteOrphan(paperId) {
         else alert('Delete failed: ' + (data.error || 'Unknown'));
     } catch (err) {
         alert('Error: ' + err.message);
+    }
+}
+
+
+// --- Consistency Checker ---
+
+async function checkConsistency() {
+    const container = document.getElementById('consistency-results');
+    container.innerHTML = '<p>Checking...</p>';
+    try {
+        const resp = await fetch('/api/consistency');
+        const data = await resp.json();
+        if (data.issues.length === 0) {
+            container.innerHTML = '<p style="color:green">No issues found. Library is consistent.</p>';
+            return;
+        }
+        let html = `<p>Found ${data.issues.length} issue(s):</p><ul>`;
+        for (const issue of data.issues) {
+            const typeLabel = {
+                missing_file: 'Missing file',
+                orphan_file: 'Orphan file',
+                wrong_directory: 'Wrong directory',
+                type_mismatch: 'Type mismatch',
+            }[issue.type] || issue.type;
+            const paperLink = issue.paper_id
+                ? ` — <a href="#" onclick="openPaper('${esc(issue.paper_id)}'); return false">${esc(issue.paper_id)}</a>`
+                : '';
+            html += `<li><strong>${esc(typeLabel)}</strong>${paperLink}: ${esc(issue.message)}</li>`;
+        }
+        html += '</ul>';
+        container.innerHTML = html;
+    } catch (err) {
+        container.innerHTML = `<p style="color:red">Error: ${esc(err.message)}</p>`;
     }
 }
 

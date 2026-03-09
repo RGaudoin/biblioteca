@@ -4,6 +4,7 @@ AI features for Biblioteca — metadata extraction and summarisation using Claud
 
 import json
 import re
+from pathlib import Path
 
 from papers import get_api_key, load_config, save_config
 
@@ -69,17 +70,30 @@ def _track_usage(config, input_tokens, output_tokens, model=None):
     save_config(config)
 
 
-def extract_metadata(pdf_path, config=None):
-    """Extract title, authors, year, summary from PDF using Claude API.
+def _extract_text_from_file(file_path):
+    """Extract text from a file. For PDFs, uses PyPDF2. For text files, reads directly."""
+    from papers import VERSIONABLE_EXTENSIONS
+    ext = Path(file_path).suffix.lower()
+    if ext in VERSIONABLE_EXTENSIONS:
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                return f.read()
+        except Exception:
+            return None
+    return _extract_text_from_pdf(file_path)
 
-    Sends first ~5 pages of text to Claude with a structured prompt.
+
+def extract_metadata(pdf_path, config=None):
+    """Extract title, authors, year, summary from a document using Claude API.
+
+    Supports PDFs (via PyPDF2) and text files (read directly).
     Returns dict with extracted metadata fields, or empty dict if extraction fails.
     Falls back to PDF file metadata if no API key is configured.
     """
     if config is None:
         config = load_config()
 
-    # Always try PDF file metadata first
+    # Try PDF file metadata first (only works for PDFs)
     pdf_meta = _get_pdf_metadata(pdf_path)
 
     # Try Claude API extraction
@@ -87,7 +101,7 @@ def extract_metadata(pdf_path, config=None):
     if not api_key:
         return pdf_meta
 
-    text = _extract_text_from_pdf(pdf_path)
+    text = _extract_text_from_file(pdf_path)
     if not text:
         return pdf_meta
 
@@ -102,19 +116,19 @@ def extract_metadata(pdf_path, config=None):
 
     model = config.get("extraction_model", "claude-haiku-4-5-20251001")
 
-    prompt = f"""Extract metadata from this academic paper text. Return ONLY valid JSON with these fields:
+    prompt = f"""Extract metadata from this document. It may be an academic paper, a blog post, notes, or any other text. Return ONLY valid JSON with these fields:
 {{
-  "title": "full paper title",
+  "title": "document title",
   "authors": ["Author One", "Author Two"],
   "year": 2024,
-  "source": "journal or conference name",
+  "source": "journal, conference, website, or publication name",
   "tags": ["tag1", "tag2", "tag3"],
-  "summary": "2-3 sentence summary of the paper"
+  "summary": "2-3 sentence summary of the document"
 }}
 
-If any field cannot be determined, use null. For tags, suggest 3-5 relevant lowercase tags.
+If any field cannot be determined, use null. For tags, suggest 3-5 relevant lowercase tags. The summary should describe the document accurately — do not assume it is an academic paper unless it clearly is one.
 
-Paper text:
+Document text:
 {text}"""
 
     try:
@@ -179,7 +193,7 @@ def summarise_paper(pdf_path, config=None, style="brief"):
     if not api_key:
         return None
 
-    text = _extract_text_from_pdf(pdf_path, max_pages=10)
+    text = _extract_text_from_file(pdf_path)
     if not text:
         return None
 
@@ -424,7 +438,7 @@ def suggest_topics(pdf_path, all_existing_topics, current_topics=None, config=No
     if not api_key:
         return []
 
-    text = _extract_text_from_pdf(pdf_path)
+    text = _extract_text_from_file(pdf_path)
     if not text:
         return []
 
@@ -448,14 +462,14 @@ def suggest_topics(pdf_path, all_existing_topics, current_topics=None, config=No
     else:
         existing_block = "No existing topics yet."
 
-    prompt = f"""Given this academic paper text, suggest which topics it belongs to.
+    prompt = f"""Given this document, suggest which topics it belongs to.
 Prefer existing topics from the list below where relevant — use their EXACT names.
 You may also suggest new topic names if none of the existing ones fit well.
-Return ONLY a JSON list of topic name strings. If nothing fits, return [].
+Always suggest at least one topic. Return ONLY a JSON list of topic name strings.
 
 {existing_block}
 
-Paper text:
+Document text:
 {text}"""
 
     try:

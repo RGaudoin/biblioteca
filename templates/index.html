@@ -67,9 +67,9 @@
             </div>
 
             <div id="tab-file" class="tab-content active">
-                <h3>Upload PDF</h3>
+                <h3>Upload Document</h3>
                 <form id="upload-form" onsubmit="return handleUpload(event)">
-                    <input type="file" id="pdf-file" accept=".pdf" required>
+                    <input type="file" id="pdf-file" accept=".pdf,.txt,.md,.tex,.org,.rst,.bib,.csv" required>
                     <label><input type="checkbox" id="upload-ai"> Use AI for metadata extraction</label>
                     <button type="submit">Import</button>
                 </form>
@@ -216,6 +216,8 @@ https://example.com/paper.pdf
                 <h3>Library Maintenance</h3>
                 <button onclick="findDuplicates()">Find Duplicates</button>
                 <div id="duplicates-results"></div>
+                <button onclick="checkConsistency()" style="margin-top:0.5rem">Check Consistency</button>
+                <div id="consistency-results"></div>
             </div>
         </section>
     </main>

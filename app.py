@@ -5,6 +5,7 @@ Flask web application for Biblioteca — paper library.
 import os
 import re
 from datetime import date
+from pathlib import Path
 
 from flask import Flask, jsonify, render_template, request, send_from_directory
 
@@ -29,6 +30,7 @@ from papers import (
     load_paper,
     load_topic,
     merge_papers,
+    resolve_file_path,
     save_collection,
     save_config,
     save_paper,
@@ -114,6 +116,16 @@ def api_delete_paper(paper_id):
     if delete_paper(paper_id):
         return jsonify({"success": True})
     return jsonify({"error": "Paper not found"}), 404
+
+
+@app.route("/api/papers/<paper_id>/toggle-private", methods=["POST"])
+def api_toggle_private(paper_id):
+    """Toggle a paper between public and private."""
+    from papers import toggle_privacy
+    metadata, warnings = toggle_privacy(paper_id)
+    if metadata is None:
+        return jsonify({"success": False, "error": "Paper not found"}), 404
+    return jsonify({"success": True, "paper": metadata, "warnings": warnings})
 
 
 # --- Search & Browse ---
@@ -346,12 +358,15 @@ def api_import_file():
         return jsonify({"success": False, "error": "No file uploaded"}), 400
 
     file = request.files["file"]
-    if not file.filename or not file.filename.lower().endswith(".pdf"):
-        return jsonify({"success": False, "error": "Only PDF files are accepted"}), 400
+    from papers import ACCEPTED_EXTENSIONS
+    ext = Path(file.filename).suffix.lower() if file.filename else ""
+    if not file.filename or ext not in ACCEPTED_EXTENSIONS:
+        accepted = ", ".join(sorted(ACCEPTED_EXTENSIONS))
+        return jsonify({"success": False, "error": f"Unsupported file type. Accepted: {accepted}"}), 400
 
     # Save to temp, then import
     import tempfile
-    with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
+    with tempfile.NamedTemporaryFile(suffix=ext or ".pdf", delete=False) as tmp:
         file.save(tmp)
         tmp_path = tmp.name
 
@@ -361,7 +376,6 @@ def api_import_file():
                           metadata_overrides={"original_filename": file.filename})
 
     # Clean up
-    from pathlib import Path
     Path(tmp_path).unlink(missing_ok=True)
 
     if result["success"]:
@@ -613,10 +627,10 @@ def api_ai_bulk_extract():
                             "reason": "No PDF file"})
             continue
 
-        pdf_path = PAPERS_DIR / paper["pdf_filename"]
-        if not pdf_path.exists():
+        pdf_path = resolve_file_path(paper)
+        if not pdf_path:
             results.append({"paper_id": paper["id"], "status": "skipped",
-                            "reason": "PDF not found on disk"})
+                            "reason": "File not found on disk"})
             continue
 
         extracted = extract_metadata(str(pdf_path), config)
@@ -669,11 +683,11 @@ def api_ai_extract(paper_id):
         return jsonify({"error": "Paper not found"}), 404
 
     if not paper.get("pdf_filename"):
-        return jsonify({"success": False, "error": "Paper has no PDF file"}), 400
+        return jsonify({"success": False, "error": "Paper has no file"}), 400
 
-    pdf_path = PAPERS_DIR / paper["pdf_filename"]
-    if not pdf_path.exists():
-        return jsonify({"success": False, "error": "PDF file not found on disk"}), 400
+    pdf_path = resolve_file_path(paper)
+    if not pdf_path:
+        return jsonify({"success": False, "error": "File not found on disk"}), 400
 
     config = load_config()
     if not get_api_key(config):
@@ -711,11 +725,11 @@ def api_ai_summarise(paper_id):
         return jsonify({"error": "Paper not found"}), 404
 
     if not paper.get("pdf_filename"):
-        return jsonify({"success": False, "error": "Paper has no PDF file"}), 400
+        return jsonify({"success": False, "error": "Paper has no file"}), 400
 
-    pdf_path = PAPERS_DIR / paper["pdf_filename"]
-    if not pdf_path.exists():
-        return jsonify({"success": False, "error": "PDF file not found on disk"}), 400
+    pdf_path = resolve_file_path(paper)
+    if not pdf_path:
+        return jsonify({"success": False, "error": "File not found on disk"}), 400
 
     config = load_config()
     if not get_api_key(config):
@@ -759,11 +773,11 @@ def api_suggest_topics(paper_id):
         return jsonify({"error": "Paper not found"}), 404
 
     if not paper.get("pdf_filename"):
-        return jsonify({"success": False, "error": "Paper has no PDF file"}), 400
+        return jsonify({"success": False, "error": "Paper has no file"}), 400
 
-    pdf_path = PAPERS_DIR / paper["pdf_filename"]
-    if not pdf_path.exists():
-        return jsonify({"success": False, "error": "PDF file not found"}), 400
+    pdf_path = resolve_file_path(paper)
+    if not pdf_path:
+        return jsonify({"success": False, "error": "File not found on disk"}), 400
 
     config = load_config()
     if not get_api_key(config):
@@ -832,6 +846,14 @@ def api_merge_duplicates():
     if keeper is None:
         return jsonify({"success": False, "error": "Paper to keep not found"}), 404
     return jsonify({"success": True, "paper": keeper})
+
+
+@app.route("/api/consistency")
+def api_check_consistency():
+    """Check library consistency: orphan files, missing files, type mismatches."""
+    from papers import check_consistency
+    result = check_consistency()
+    return jsonify(result)
 
 
 # --- Config ---
@@ -909,7 +931,12 @@ def api_test_api_key():
 # --- PDF serving ---
 
 @app.route("/api/pdf/<filename>")
-def api_serve_pdf(filename):
+def api_serve_file(filename):
+    from papers import DOCUMENTS_DIR, PRIVATE_DOCUMENTS_DIR
+    # Check private docs, public docs, then papers dir
+    for d in [PRIVATE_DOCUMENTS_DIR, DOCUMENTS_DIR, PAPERS_DIR]:
+        if (d / filename).exists():
+            return send_from_directory(d, filename)
     return send_from_directory(PAPERS_DIR, filename)
 
 

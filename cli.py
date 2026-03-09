@@ -18,7 +18,7 @@ import argparse
 import json
 import sys
 
-from papers import list_papers, load_paper, get_all_tags, get_all_topics, list_collections
+from papers import list_papers, load_paper, get_all_tags, get_all_topics, list_collections, resolve_file_path
 
 
 def cmd_import_local(args):
@@ -193,9 +193,9 @@ def cmd_extract(args):
             print(f"  Skipped: {p['id']} — no PDF")
             continue
 
-        pdf_path = PAPERS_DIR / p["pdf_filename"]
-        if not pdf_path.exists():
-            print(f"  Skipped: {p['id']} — PDF not found")
+        pdf_path = resolve_file_path(p)
+        if not pdf_path:
+            print(f"  Skipped: {p['id']} — file not found")
             continue
 
         extracted = extract_metadata(str(pdf_path), config)
