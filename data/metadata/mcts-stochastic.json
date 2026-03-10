@@ -10,11 +10,10 @@
   "year": 2025,
   "source": "arXiv",
   "tags": [
-    "monte carlo tree search",
     "stochastic environments",
-    "ucb-algorithm",
-    "regret-analysis",
-    "multi-armed-bandits"
+    "monte carlo tree search",
+    "multi-armed-bandits",
+    "regret-analysis"
   ],
   "topics": [
     "Monte Carlo Tree Search (MCTS)"

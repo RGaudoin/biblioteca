@@ -11,10 +11,9 @@
   "source": "Journal of Machine Learning Research",
   "tags": [
     "approximate dynamic programming",
-    "information state",
+    "belief-states",
     "reinforcement-learning",
-    "partially-observable-mdps",
-    "policy-optimization"
+    "markov-decision-processes"
   ],
   "topics": [],
   "summary": "This paper proposes a theoretical framework for approximate planning and learning in partially observed systems based on the concept of approximate information state (AIS). The authors show that when a function of history approximately satisfies information state properties, there exists a corresponding approximate dynamic program with bounded loss of optimality. The framework unifies several existing approximations in literature and includes policy gradient algorithms for partially observed reinforcement learning with numerical experiments on low to high-dimensional environments.",

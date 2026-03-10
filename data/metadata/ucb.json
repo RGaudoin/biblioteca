@@ -8,9 +8,8 @@
   "source": "Lecture notes",
   "tags": [
     "online learning",
-    "ucb-algorithm",
-    "regret-analysis",
-    "multi-armed-bandits"
+    "multi-armed-bandits",
+    "regret-analysis"
   ],
   "topics": [
     "Upper Confidence Bound (UCB) Algorithms"

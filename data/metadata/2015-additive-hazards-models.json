@@ -6,10 +6,10 @@
   "source": "Chapter 9 - Academic Textbook/Course Material",
   "tags": [
     "additive hazard models",
-    "survival analysis",
     "aalen model",
     "time-varying covariates",
-    "cox-regression"
+    "cox-regression",
+    "survival-analysis"
   ],
   "topics": [],
   "summary": "This chapter presents additive hazard models as an alternative to proportional hazard models, where the hazard function takes a linear form with time-varying coefficient functions. The text covers both Aalen's varying coefficient model (1989) and the fixed covariate model by Lin and Yang (1995), explaining estimation methods using least-squares approaches and cumulative coefficient estimation with kernel smoothing techniques.",

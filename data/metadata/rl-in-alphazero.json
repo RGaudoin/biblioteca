@@ -7,11 +7,10 @@
   "year": 2019,
   "source": null,
   "tags": [
-    "alphazero",
-    "monte carlo tree search",
     "game playing",
     "neural-networks",
-    "reinforcement-learning"
+    "reinforcement-learning",
+    "monte carlo tree search"
   ],
   "topics": [
     "AlphaZero and Reinforcement Learning"

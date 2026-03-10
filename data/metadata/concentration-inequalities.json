@@ -8,7 +8,7 @@
   "source": "Math 733-734: Theory of Probability",
   "tags": [
     "moment-generating function",
-    "concentration-inequalities"
+    "regret-analysis"
   ],
   "topics": [
     "Upper Confidence Bound (UCB) Algorithms"

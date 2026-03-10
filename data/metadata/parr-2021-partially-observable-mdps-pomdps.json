@@ -7,11 +7,9 @@
   "year": 2021,
   "source": "CPS 570 Course Lecture",
   "tags": [
-    "belief states",
-    "markov processes",
+    "belief-states",
     "reinforcement-learning",
-    "partially-observable-mdps",
-    "hidden-state"
+    "markov-decision-processes"
   ],
   "topics": [],
   "summary": "This lecture introduces Partially Observable MDPs (POMDPs), which extend traditional MDPs to settings where the true state is hidden and only observations are available to the agent. The paper explains how belief states—probability distributions over hidden states—transform discrete POMDP problems into continuous belief space problems, and derives the Bellman equation for computing optimal value functions in belief space.",

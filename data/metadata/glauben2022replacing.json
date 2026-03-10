@@ -7,11 +7,9 @@
   "year": 2022,
   "source": "Master Thesis, TU Darmstadt",
   "tags": [
-    "monte carlo tree search",
-    "alphazero",
     "planning models",
     "reinforcement-learning",
-    "policy-optimization"
+    "monte carlo tree search"
   ],
   "topics": [
     "Monte Carlo Tree Search (MCTS)"

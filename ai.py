@@ -347,6 +347,33 @@ File content:
     return None
 
 
+def _find_normalisation_duplicates(tags_with_counts):
+    """Find tags that differ only by hyphens/spaces/case — obvious duplicates."""
+    def normalise(tag):
+        return tag.lower().replace("-", " ").replace("_", " ").strip()
+
+    groups = {}
+    for tag in tags_with_counts:
+        key = normalise(tag)
+        groups.setdefault(key, []).append(tag)
+
+    results = []
+    for key, group in groups.items():
+        if len(group) < 2:
+            continue
+        # Prefer hyphenated lowercase form; among those, pick highest count
+        preferred = max(group, key=lambda t: (
+            "-" in t and t == t.lower(),  # prefer hyphenated lowercase
+            tags_with_counts[t],          # then highest count
+        ))
+        results.append({
+            "tags": sorted(group),
+            "suggested": preferred,
+            "reason": "Normalisation duplicate (differ only by hyphens/spaces/case)",
+        })
+    return results
+
+
 def suggest_tag_merges(tags_with_counts, config=None):
     """Use Claude to suggest tag consolidations based on near-duplicates and synonyms.
 
@@ -356,17 +383,20 @@ def suggest_tag_merges(tags_with_counts, config=None):
 
     Returns list of dicts: [{"tags": ["tag1", "tag2"], "suggested": "target", "reason": "..."}]
     """
+    # First pass: deterministic normalisation duplicates (no AI needed)
+    deterministic = _find_normalisation_duplicates(tags_with_counts)
+
     if config is None:
         config = load_config()
 
     api_key = get_api_key(config)
     if not api_key:
-        return []
+        return deterministic
 
     try:
         import anthropic
     except ImportError:
-        return []
+        return deterministic
 
     model = config.get("extraction_model", "claude-haiku-4-5-20251001")
 
@@ -410,13 +440,18 @@ Rules:
         response_text = response.content[0].text
         json_match = re.search(r"\[[\s\S]*\]", response_text)
         if json_match:
-            return json.loads(json_match.group())
+            ai_suggestions = json.loads(json_match.group())
+            # Merge with deterministic results, avoiding duplicates
+            det_tag_sets = {frozenset(d["tags"]) for d in deterministic}
+            for s in ai_suggestions:
+                if frozenset(s["tags"]) not in det_tag_sets:
+                    deterministic.append(s)
 
     except Exception:
         import traceback
         traceback.print_exc()
 
-    return []
+    return deterministic
 
 
 def suggest_topics(pdf_path, all_existing_topics, current_topics=None, config=None):
@@ -452,10 +487,17 @@ def suggest_topics(pdf_path, all_existing_topics, current_topics=None, config=No
 
     model = config.get("extraction_model", "claude-haiku-4-5-20251001")
 
-    if all_existing_topics:
+    # Filter out generic catch-all topics before sending to AI
+    CATCH_ALL_WORDS = {"other", "misc", "miscellaneous", "general", "uncategorised", "uncategorized"}
+    filtered_topics = [
+        t for t in all_existing_topics
+        if not any(w in t["name"].lower().split() for w in CATCH_ALL_WORDS)
+    ]
+
+    if filtered_topics:
         topics_str = "\n".join(
             f"  - {t['name']}" + (f": {t['description']}" if t.get("description") else "")
-            for t in all_existing_topics
+            for t in filtered_topics
         )
         existing_block = f"""Existing topics (use the EXACT name if one fits):
 {topics_str}"""
@@ -464,8 +506,7 @@ def suggest_topics(pdf_path, all_existing_topics, current_topics=None, config=No
 
     prompt = f"""Given this document, suggest which topics it belongs to.
 Use existing topics from the list below ONLY if they are a genuinely good fit — use their EXACT names.
-Do NOT force a match to a generic or catch-all topic (e.g. "Other") when a more specific topic would be better.
-Suggest new, specific topic names whenever the existing ones are too broad or irrelevant.
+Suggest new, specific topic names whenever the existing ones don't fit well.
 Aim for 2-4 topics. Return ONLY a JSON list of topic name strings.
 
 {existing_block}
@@ -498,15 +539,8 @@ Document text:
             results = []
             for s in suggested:
                 sl = s.lower()
-                # Map to existing topic name (exact or fuzzy substring match)
-                canonical = None
-                if sl in existing_by_name:
-                    canonical = existing_by_name[sl]
-                else:
-                    for el, en in existing_by_name.items():
-                        if sl in el or el in sl:
-                            canonical = en
-                            break
+                # Map to existing topic name (exact match only)
+                canonical = existing_by_name.get(sl)
 
                 name = canonical or s
                 # Skip if already assigned to this paper

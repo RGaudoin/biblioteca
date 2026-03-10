@@ -13,10 +13,10 @@
   "source": "arXiv:1402.0555",
   "tags": [
     "optimization oracle",
-    "machine learning",
-    "regret-analysis",
     "exploration-exploitation",
-    "multi-armed-bandits"
+    "machine-learning",
+    "multi-armed-bandits",
+    "regret-analysis"
   ],
   "topics": [
     "Upper Confidence Bound (UCB) Algorithms"
