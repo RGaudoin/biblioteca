@@ -1,0 +1,33 @@
+{
+  "id": "sussman-2022-system-secure-management-inventory",
+  "title": "System for Secure Management of Inventory and Profile Information",
+  "authors": [
+    "Andrew D. Sussman",
+    "Gregory M. Moore",
+    "Pamela Dillon",
+    "Stephen Dillon"
+  ],
+  "year": 2022,
+  "source": "United States Patent US 11,263,687 B2",
+  "tags": [
+    "patent",
+    "inventory-management",
+    "secure-data-management",
+    "multi-channel-retail",
+    "product-recommendations"
+  ],
+  "topics": [],
+  "summary": "A secure inventory management system that holds inventory information for products associated with one or more channels and consumer-product purchase event information. Includes a channel manager user interface for generating recommendations while maintaining security so that only aggregate supplier information is shared across channels.",
+  "notes": null,
+  "private": false,
+  "added": "2026-03-09",
+  "pdf_filename": "sussman-2022-system-secure-management-inventory.pdf",
+  "url": null,
+  "arxiv_id": null,
+  "doi": null,
+  "import_source": "local",
+  "original_filename": "US11263687.pdf",
+  "pdf_hash": "80e6b73bab7b7e19c5538a4574ff19fb03a854b702ace4e214d3cd183175c72c",
+  "content_type": "pdf",
+  "versionable": false
+}

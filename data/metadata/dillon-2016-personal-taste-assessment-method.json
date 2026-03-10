@@ -1,0 +1,32 @@
+{
+  "id": "dillon-2016-personal-taste-assessment-method",
+  "title": "Personal Taste Assessment Method and System",
+  "authors": [
+    "Dillon, Stephen",
+    "Dillon, Pamela",
+    "Sussman, Andrew"
+  ],
+  "year": 2016,
+  "source": "Australian Patent Office",
+  "tags": [
+    "patent",
+    "taste-assessment",
+    "preference-prediction",
+    "recommendation-system",
+    "machine-learning"
+  ],
+  "topics": [],
+  "summary": "This patent describes a method and system for predicting a person's preference for items by analyzing their user profile and item characteristics. The system uses a preference model that associates a person's ratings with item characteristics to generate predicted ratings for items of interest, enabling more accurate recommendations beyond direct similarity matching.",
+  "notes": null,
+  "private": false,
+  "added": "2026-03-09",
+  "pdf_filename": "dillon-2016-personal-taste-assessment-method.pdf",
+  "url": null,
+  "arxiv_id": null,
+  "doi": null,
+  "import_source": "local",
+  "original_filename": "AU2015271952.pdf",
+  "pdf_hash": "738c931f5246c97c6503e98c9cd3dc5d9d109efeb1516dc4500aff16335a3a37",
+  "content_type": "pdf",
+  "versionable": false
+}

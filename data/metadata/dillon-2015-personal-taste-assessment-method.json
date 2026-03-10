@@ -1,0 +1,32 @@
+{
+  "id": "dillon-2015-personal-taste-assessment-method",
+  "title": "Personal Taste Assessment Method and System",
+  "authors": [
+    "Stephen Dillon",
+    "Pamela Dillon",
+    "Andrew Sussman"
+  ],
+  "year": 2015,
+  "source": "United States Patent US 9,026,484 B2",
+  "tags": [
+    "patent",
+    "preference-prediction",
+    "recommendation-system",
+    "taste-assessment",
+    "machine-learning"
+  ],
+  "topics": [],
+  "summary": "A continuation patent implementing a personal taste assessment and prediction system that predicts a person's preference for an item by accessing characteristic values from a database, identifying item characteristics, and processing them with a user profile to generate predicted ratings.",
+  "notes": null,
+  "private": false,
+  "added": "2026-03-09",
+  "pdf_filename": "dillon-2015-personal-taste-assessment-method.pdf",
+  "url": null,
+  "arxiv_id": null,
+  "doi": null,
+  "import_source": "local",
+  "original_filename": "US9026484 (1).pdf",
+  "pdf_hash": "10a15c3998e9d83707d21fc3115e42bda090357875e444c711886159c5d8d56f",
+  "content_type": "pdf",
+  "versionable": false
+}

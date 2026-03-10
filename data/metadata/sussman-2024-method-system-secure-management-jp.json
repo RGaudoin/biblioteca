@@ -1,0 +1,31 @@
+{
+  "id": "sussman-2024-method-system-secure-management-jp",
+  "title": "Method and System for Secure Management of Inventory and Profile Information",
+  "authors": [
+    "Andrew D. Sussman",
+    "Gregory M. Moore"
+  ],
+  "year": 2024,
+  "source": "Japanese Patent JP 7,544,355 B2",
+  "tags": [
+    "patent",
+    "inventory-management",
+    "secure-data-management",
+    "multi-channel-retail",
+    "product-recommendations"
+  ],
+  "topics": [],
+  "summary": "Japanese patent for an inventory management system that securely manages product information and consumer profile data across multiple channels. Assigned to RingIT, Inc., Syracuse, NY. Japanese equivalent of the US secure management patent family.",
+  "notes": null,
+  "private": false,
+  "added": "2026-03-09",
+  "pdf_filename": "sussman-2024-method-system-secure-management-jp.pdf",
+  "url": null,
+  "arxiv_id": null,
+  "doi": null,
+  "import_source": "local",
+  "original_filename": "JP7544355.pdf",
+  "pdf_hash": "35deb21b2d50c675ed1ebfc014f8b2a7f1faf4f0df502093b0c6bf8193114610",
+  "content_type": "pdf",
+  "versionable": false
+}

@@ -1,0 +1,31 @@
+{
+  "id": "sussman-2025b-method-system-secure-management-jp",
+  "title": "Method and System for Secure Management of Inventory and Profile Information",
+  "authors": [
+    "Andrew D. Sussman",
+    "Gregory M. Moore"
+  ],
+  "year": 2025,
+  "source": "Japanese Patent JP 7,750,475 B2",
+  "tags": [
+    "patent",
+    "inventory-management",
+    "secure-data-management",
+    "multi-channel-retail",
+    "product-recommendations"
+  ],
+  "topics": [],
+  "summary": "Japanese divisional patent for a method of managing product inventory across multiple channels. Assigned to Preferabli, Inc. A divisional application from JP 7,544,355, covering the method aspects of secure inventory and profile management.",
+  "notes": null,
+  "private": false,
+  "added": "2026-03-09",
+  "pdf_filename": "sussman-2025b-method-system-secure-management-jp.pdf",
+  "url": null,
+  "arxiv_id": null,
+  "doi": null,
+  "import_source": "local",
+  "original_filename": "JP7750475.pdf",
+  "pdf_hash": "c7b543d27a4d4141cf93c8cfa1587c23000ff9c859fd5a66d004ffa2b8b0d32f",
+  "content_type": "pdf",
+  "versionable": false
+}

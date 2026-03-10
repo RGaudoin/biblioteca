@@ -1,0 +1,33 @@
+{
+  "id": "sussman-2025c-method-system-secure-management-sg",
+  "title": "Method and System for Secure Management of Inventory and Profile Information",
+  "authors": [
+    "Sussman, Andrew D.",
+    "Moore, Gregory M.",
+    "Dillon, Pamela",
+    "Dillon, Stephen"
+  ],
+  "year": 2025,
+  "source": "Singapore Patents Act 1994 - Patent Certificate",
+  "tags": [
+    "inventory-management",
+    "secure-data-management",
+    "customer-relationship-management",
+    "product-recommendations",
+    "multi-channel-systems"
+  ],
+  "topics": [],
+  "summary": "This patent discloses an inventory management system that securely manages product information and consumer profile data across multiple channels while enabling personalized product recommendations. The system allows channel managers to access consumer purchase history and interaction records specific to their channel while leveraging non-sensitive shared data to generate product recommendations, addressing technical challenges in supply chain data security and product discovery.",
+  "notes": null,
+  "private": false,
+  "added": "2026-03-09",
+  "pdf_filename": "sussman-2025c-method-system-secure-management-sg.pdf",
+  "url": null,
+  "arxiv_id": null,
+  "doi": null,
+  "import_source": "local",
+  "original_filename": "SG11202254189J.pdf",
+  "pdf_hash": "1fd9005df3ded17e5d57c461fdee82b0b97799c9b1540a783e0736459786d706",
+  "content_type": "pdf",
+  "versionable": false
+}

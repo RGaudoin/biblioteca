@@ -1,0 +1,33 @@
+{
+  "id": "sussman-2025-method-system-secure-management",
+  "title": "Method and System for Secure Management of Inventory and Profile Information",
+  "authors": [
+    "Andrew D. Sussman",
+    "Gregory M. Moore",
+    "Pamela Dillon",
+    "Stephen Dillon"
+  ],
+  "year": 2025,
+  "source": "United States Patent US 12,254,503 B2",
+  "tags": [
+    "patent",
+    "inventory-management",
+    "secure-data-management",
+    "multi-channel-retail",
+    "product-recommendations"
+  ],
+  "topics": [],
+  "summary": "A secure inventory management system with a product information data store and consumer profile data store across multiple channels. Includes a channel manager user interface for identifying products and generating recommendations using consumer profile data while maintaining security and privacy of personally identifiable information.",
+  "notes": null,
+  "private": false,
+  "added": "2026-03-09",
+  "pdf_filename": "sussman-2025-method-system-secure-management.pdf",
+  "url": null,
+  "arxiv_id": null,
+  "doi": null,
+  "import_source": "local",
+  "original_filename": "US12254503.pdf",
+  "pdf_hash": "5a5779083b7214c74187814ecf00fbe5c5daa62f567d273124849d9eb0231a98",
+  "content_type": "pdf",
+  "versionable": false
+}
