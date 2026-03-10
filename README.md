@@ -87,14 +87,9 @@ biblioteca/
     └── config.json     # User settings (gitignored)
 ```
 
-## TODO
+## Backlog
 
-- **Content type awareness** — detect whether a document is binary (PDF) or versionable text (txt, md, tex, org); auto-detect on import with manual override per paper
-- **Version text content** — git-track versionable text documents alongside metadata; binary files stay gitignored as now
-- **Consistency checker** — maintenance tool to report: metadata without files, files without metadata, mismatched private/public state
-- **Private content separation** — marking a paper private moves metadata and any versioned content to `data/private/` (gitignored); with optional encrypted mirror in `data/private-encrypted/` (git-tracked) for backup
-- **Paper finder** — given partial information (e.g. a title or topic), search for and fetch the PDF from arXiv or other open-access sources, especially useful when the original is behind a paywall
-- **Paper linking** — link related papers together (e.g. multi-part series, papers that build on each other), optionally ordered, with navigation between linked papers
+See [BACKLOG.md](BACKLOG.md) for planned features and known issues.
 
 ## How It Was Built
 

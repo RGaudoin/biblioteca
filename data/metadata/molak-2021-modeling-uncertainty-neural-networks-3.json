@@ -7,7 +7,6 @@
   "year": 2021,
   "source": "Towards Data Science",
   "tags": [
-    "uncertainty estimation",
     "tensorflow probability",
     "probabilistic programming",
     "neural-networks",

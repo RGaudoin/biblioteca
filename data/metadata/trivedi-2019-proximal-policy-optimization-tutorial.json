@@ -9,9 +9,9 @@
   "tags": [
     "generalized advantage estimation",
     "actor-critic",
-    "deep learning",
-    "reinforcement-learning",
-    "proximal-policy-optimization"
+    "proximal-policy-optimization",
+    "neural-networks",
+    "reinforcement-learning"
   ],
   "topics": [],
   "summary": "This tutorial demonstrates the implementation of Proximal Policy Optimization (PPO) for training a reinforcement learning agent to play football. It covers the Generalized Advantage Estimation (GAE) algorithm for calculating action advantages and explains the custom PPO loss function used to train the actor model while maintaining training stability through policy clipping.",

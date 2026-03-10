@@ -8,11 +8,11 @@
   "year": 2015,
   "source": "AAAI (Association for the Advancement of Artificial Intelligence)",
   "tags": [
-    "deep reinforcement learning",
     "atari games",
     "lstm",
     "recurrent-neural-networks",
-    "partially-observable-mdps"
+    "reinforcement-learning",
+    "markov-decision-processes"
   ],
   "topics": [],
   "summary": "This paper introduces Deep Recurrent Q-Network (DRQN), which combines Long Short Term Memory (LSTM) with Deep Q-Networks to handle partially observable environments. DRQN replaces DQN's first fully-connected layer with an LSTM layer, enabling it to integrate information through time and successfully handle games where complete state information is unavailable. The approach is evaluated on standard Atari games and modified versions with flickering screens, demonstrating superior performance compared to DQN when dealing with partial observations.",

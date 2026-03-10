@@ -91,9 +91,13 @@ def import_local(pdf_path, metadata_overrides=None, use_ai=False):
     pdf_filename = normalise_filename(title, authors, year, original=orig_name)
 
     # Copy file to appropriate directory
-    from papers import VERSIONABLE_EXTENSIONS, DOCUMENTS_DIR
+    from papers import VERSIONABLE_EXTENSIONS, DOCUMENTS_DIR, PRIVATE_DOCUMENTS_DIR
     ext = pdf_path.suffix.lower()
-    target_dir = DOCUMENTS_DIR if ext in VERSIONABLE_EXTENSIONS else PAPERS_DIR
+    is_private = overrides.get("private", False)
+    if ext in VERSIONABLE_EXTENSIONS:
+        target_dir = PRIVATE_DOCUMENTS_DIR if is_private else DOCUMENTS_DIR
+    else:
+        target_dir = PAPERS_DIR
     dest = target_dir / pdf_filename
     target_dir.mkdir(parents=True, exist_ok=True)
     shutil.copy2(str(pdf_path), str(dest))
@@ -199,11 +203,12 @@ def _parse_arxiv_response(xml_text):
     }
 
 
-def import_arxiv(arxiv_input):
+def import_arxiv(arxiv_input, private=False):
     """Import a paper from arxiv by ID or URL.
 
     Args:
         arxiv_input: An arxiv ID (e.g. '2402.02160') or URL.
+        private: If True, mark the paper as private on import.
 
     Returns:
         dict with 'success', 'paper_id', 'metadata', and optionally 'error'.
@@ -264,6 +269,7 @@ def import_arxiv(arxiv_input):
         source=meta["source"],
         summary=meta["summary"],
         tags=tags,
+        private=private,
         url=f"https://arxiv.org/abs/{arxiv_id}",
         arxiv_id=arxiv_id,
         doi=meta.get("doi"),
@@ -277,8 +283,12 @@ def import_arxiv(arxiv_input):
 
 # --- URL import ---
 
-def import_url(url):
+def import_url(url, private=False):
     """Import a paper from a URL. Routes to specific handlers based on URL pattern.
+
+    Args:
+        url: URL to import from.
+        private: If True, mark the paper as private on import.
 
     Returns:
         dict with 'success', 'paper_id', 'metadata', and optionally 'error'.
@@ -287,26 +297,26 @@ def import_url(url):
 
     # Arxiv
     if "arxiv.org" in url:
-        return import_arxiv(url)
+        return import_arxiv(url, private=private)
 
     # Direct PDF link
     if url.lower().endswith(".pdf"):
-        return _import_pdf_url(url)
+        return _import_pdf_url(url, private=private)
 
     # DOI
     doi_match = re.search(r"(10\.\d{4,}/[^\s]+)", url)
     if doi_match or "doi.org" in url:
-        return _import_doi(url)
+        return _import_doi(url, private=private)
 
     # GitHub — store as reference, no PDF
     if "github.com" in url:
-        return _import_github_ref(url)
+        return _import_github_ref(url, private=private)
 
     # Generic URL — try to download as PDF or store as reference
-    return _import_generic_url(url)
+    return _import_generic_url(url, private=private)
 
 
-def _import_pdf_url(url):
+def _import_pdf_url(url, private=False):
     """Download a PDF from a direct URL and import it."""
     try:
         resp = requests.get(url, timeout=60, headers={"User-Agent": "Biblioteca/1.0"})
@@ -327,7 +337,7 @@ def _import_pdf_url(url):
         tmp.write(resp.content)
         tmp_path = tmp.name
 
-    result = import_local(tmp_path, metadata_overrides={"url": url, "import_source": "url", "original_filename": filename})
+    result = import_local(tmp_path, metadata_overrides={"url": url, "import_source": "url", "original_filename": filename, "private": private})
 
     # Clean up temp file
     Path(tmp_path).unlink(missing_ok=True)
@@ -335,7 +345,7 @@ def _import_pdf_url(url):
     return result
 
 
-def _import_doi(url):
+def _import_doi(url, private=False):
     """Resolve a DOI and import the paper."""
     # Extract DOI
     doi_match = re.search(r"(10\.\d{4,}/[^\s]+)", url)
@@ -391,6 +401,7 @@ def _import_doi(url):
         authors=authors,
         year=year,
         source=source,
+        private=private,
         url=f"https://doi.org/{doi}",
         doi=doi,
         import_source="url",
@@ -399,7 +410,7 @@ def _import_doi(url):
     return {"success": True, "paper_id": paper_id, "metadata": metadata, "note": "No PDF downloaded (may be behind paywall). Add PDF manually if available."}
 
 
-def _import_github_ref(url):
+def _import_github_ref(url, private=False):
     """Store a GitHub repository as a reference (no PDF)."""
     # Extract repo info from URL
     match = re.match(r"https?://github\.com/([^/]+)/([^/\s?#]+)", url)
@@ -412,13 +423,14 @@ def _import_github_ref(url):
         title=f"GitHub: {repo_name}",
         url=url,
         import_source="url",
+        private=private,
         tags=["github", "code"],
     )
 
     return {"success": True, "paper_id": paper_id, "metadata": metadata, "note": "Stored as reference (no PDF)."}
 
 
-def _import_generic_url(url):
+def _import_generic_url(url, private=False):
     """Store a generic URL as a reference."""
     paper_id = generate_id(fallback=url.split("/")[-1] or "web-reference")
     metadata = create_paper_stub(
@@ -427,6 +439,7 @@ def _import_generic_url(url):
         title=url,
         url=url,
         import_source="url",
+        private=private,
     )
 
     return {"success": True, "paper_id": paper_id, "metadata": metadata, "note": "Stored as reference. Use AI extraction to populate metadata."}
@@ -466,7 +479,7 @@ def scan_batch(folder_path, recursive=False):
     return results
 
 
-def import_batch(folder_path, use_ai=False, recursive=False, paths=None):
+def import_batch(folder_path, use_ai=False, recursive=False, paths=None, private=False):
     """Import PDFs from a folder.
 
     Args:
@@ -474,6 +487,7 @@ def import_batch(folder_path, use_ai=False, recursive=False, paths=None):
         use_ai: If True, attempt AI metadata extraction for each.
         recursive: If True, scan subdirectories too.
         paths: If provided, only import these specific file paths (from scan_batch).
+        private: If True, mark all imported papers as private.
 
     Returns:
         dict with 'imported', 'skipped', 'failed' lists.
@@ -490,13 +504,15 @@ def import_batch(folder_path, use_ai=False, recursive=False, paths=None):
         pattern = "**/*.pdf" if recursive else "*.pdf"
         pdf_files = sorted(folder.glob(pattern))
 
+    overrides = {"private": private} if private else None
+
     for pdf_path in pdf_files:
         # Skip 0-byte files
         if pdf_path.stat().st_size == 0:
             results["skipped"].append({"path": str(pdf_path), "reason": "Empty file (0 bytes)"})
             continue
 
-        result = import_local(pdf_path, use_ai=use_ai)
+        result = import_local(pdf_path, use_ai=use_ai, metadata_overrides=overrides)
         if result["success"]:
             results["imported"].append({"path": str(pdf_path), "paper_id": result["paper_id"]})
         elif result.get("duplicate"):
@@ -524,11 +540,12 @@ def extract_urls_from_text(text):
     return cleaned
 
 
-def import_emails(text_or_path):
+def import_emails(text_or_path, private=False):
     """Parse email text (or file path) to extract URLs and import each.
 
     Args:
         text_or_path: Either raw email text or path to a text file.
+        private: If True, mark all imported papers as private.
 
     Returns:
         dict with 'urls_found', 'imported', 'failed' lists.
@@ -550,7 +567,7 @@ def import_emails(text_or_path):
         if "yahoo.com" in url and "mail" in url.lower():
             continue
 
-        result = import_url(url)
+        result = import_url(url, private=private)
         if result["success"]:
             results["imported"].append({"url": url, "paper_id": result["paper_id"], "note": result.get("note")})
         else:
@@ -561,13 +578,14 @@ def import_emails(text_or_path):
 
 # --- Link file import ---
 
-def import_links_file(file_path):
+def import_links_file(file_path, private=False):
     """Import papers from a text file containing URLs or arxiv IDs, one per line.
 
     Lines starting with # are treated as comments. Blank lines are skipped.
 
     Args:
         file_path: Path to text file.
+        private: If True, mark all imported papers as private.
 
     Returns:
         dict with 'imported', 'failed', 'skipped' lists.
@@ -589,9 +607,9 @@ def import_links_file(file_path):
         # Detect arxiv ID (bare, no URL)
         arxiv_match = ARXIV_ID_PATTERN.match(line)
         if arxiv_match and "://" not in line:
-            result = import_arxiv(line)
+            result = import_arxiv(line, private=private)
         elif "://" in line:
-            result = import_url(line)
+            result = import_url(line, private=private)
         else:
             results["skipped"].append({"line": line, "reason": "Not a recognised URL or arxiv ID"})
             continue

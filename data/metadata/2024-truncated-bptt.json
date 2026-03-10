@@ -5,11 +5,9 @@
   "year": 2024,
   "source": "Naukri Code 360",
   "tags": [
-    "truncated bptt",
-    "backpropagation through time",
-    "deep learning",
-    "neural-networks",
-    "recurrent-neural-networks"
+    "recurrent-neural-networks",
+    "backpropagation-through-time",
+    "neural-networks"
   ],
   "topics": [],
   "summary": null,

@@ -8,11 +8,11 @@
   "year": 1995,
   "source": "Artificial Intelligence",
   "tags": [
-    "non-markov decision processes",
     "active perception",
     "q-learning",
+    "belief-states",
     "reinforcement-learning",
-    "hidden-state"
+    "markov-decision-processes"
   ],
   "topics": [],
   "summary": "This paper addresses the challenge of applying reinforcement learning to non-Markov decision processes where relevant state information is hidden from the agent's immediate sensory input. The authors present two approaches: the Consistent Representation (CR) Method for tasks where agents control their sensory inputs, and stored-state algorithms that maintain internal state over time to handle more general hidden state problems. The paper unifies several existing algorithms and discusses conditions for their practical application in learning control problems.",

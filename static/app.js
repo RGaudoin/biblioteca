@@ -487,6 +487,7 @@ async function handleUpload(e) {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('ai', document.getElementById('upload-ai').checked);
+    formData.append('private', document.getElementById('import-private').checked);
 
     showResult('upload-result', 'info', 'Importing...');
 
@@ -513,7 +514,7 @@ async function handleUrlImport(e) {
         const resp = await fetch('/api/import/url', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ url })
+            body: JSON.stringify({ url, private: document.getElementById('import-private').checked })
         });
         const data = await resp.json();
         if (data.success) {
@@ -539,7 +540,7 @@ async function handleArxivImport(e) {
         const resp = await fetch('/api/import/arxiv', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ arxiv_id: arxivId })
+            body: JSON.stringify({ arxiv_id: arxivId, private: document.getElementById('import-private').checked })
         });
         const data = await resp.json();
         if (data.success) {
@@ -645,7 +646,7 @@ async function handleBatchImportAll() {
         const resp = await fetch('/api/import/batch', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ folder, ai, recursive, paths })
+            body: JSON.stringify({ folder, ai, recursive, paths, private: document.getElementById('import-private').checked })
         });
         const data = await resp.json();
         let msg = '';
@@ -669,7 +670,7 @@ async function handleLinksImport(e) {
         const resp = await fetch('/api/import/links', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text })
+            body: JSON.stringify({ text, private: document.getElementById('import-private').checked })
         });
         const data = await resp.json();
         let msg = '';
@@ -721,7 +722,7 @@ async function handleEmailImport(e) {
         const resp = await fetch('/api/import/emails', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text })
+            body: JSON.stringify({ text, private: document.getElementById('import-private').checked })
         });
         const data = await resp.json();
         let msg = `URLs found: ${data.urls_found.length}\n`;
@@ -1421,9 +1422,19 @@ async function suggestTagMerges() {
             html += `<div style="margin:0.5rem 0;padding:0.5rem;background:var(--bg);border-radius:var(--radius)">`;
             html += `<label style="display:flex;align-items:baseline;gap:0.5rem;cursor:pointer;font-weight:normal">`;
             html += `<input type="checkbox" class="suggestion-cb" data-index="${i}" checked>`;
-            html += `<span>${s.tags.map(t => `<span class="tag">${esc(t)}</span>`).join(' + ')} → <span class="tag" style="font-weight:600">${esc(s.suggested)}</span>`;
-            html += `<br><small>${esc(s.reason)}</small></span>`;
-            html += `</label></div>`;
+            html += `<span>Merge:</span></label>`;
+            html += `<div style="margin:0.25rem 0 0.25rem 1.5rem">`;
+            for (const t of s.tags) {
+                html += `<label style="display:inline-flex;align-items:center;gap:0.25rem;margin-right:0.5rem;font-weight:normal;cursor:pointer">`;
+                html += `<input type="checkbox" class="source-tag-cb" data-index="${i}" data-tag="${esc(t)}" checked>`;
+                html += `<span class="tag">${esc(t)}</span></label>`;
+            }
+            html += `</div>`;
+            html += `<div style="margin:0.25rem 0 0 1.5rem;display:flex;align-items:center;gap:0.5rem">`;
+            html += `→ <input type="text" class="merge-target" data-index="${i}" value="${esc(s.suggested)}" style="font-size:0.85rem;padding:0.15rem 0.4rem;width:auto">`;
+            html += `</div>`;
+            html += `<div style="margin:0.15rem 0 0 1.5rem"><small>${esc(s.reason)}</small></div>`;
+            html += `</div>`;
         }
 
         el.className = 'result-box visible success';
@@ -1444,18 +1455,25 @@ function toggleAllSuggestions() {
 
 async function applySelectedSuggestions() {
     const el = document.getElementById('tag-suggestions');
-    const suggestions = el._suggestions || [];
     const checked = el.querySelectorAll('.suggestion-cb:checked');
     if (checked.length === 0) return alert('No suggestions selected.');
 
     let total = 0;
     for (const cb of checked) {
-        const s = suggestions[parseInt(cb.dataset.index)];
+        const idx = cb.dataset.index;
+        // Read edited target name
+        const targetInput = el.querySelector(`.merge-target[data-index="${idx}"]`);
+        const target = targetInput ? targetInput.value.trim() : '';
+        if (!target) continue;
+        // Read checked source tags only
+        const sourceCbs = el.querySelectorAll(`.source-tag-cb[data-index="${idx}"]:checked`);
+        const tags = Array.from(sourceCbs).map(sc => sc.dataset.tag);
+        if (tags.length === 0) continue;
         try {
             const resp = await fetch('/api/tags/merge', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ tags: s.tags, target: s.suggested })
+                body: JSON.stringify({ tags, target })
             });
             const data = await resp.json();
             if (data.success) total += data.updated;

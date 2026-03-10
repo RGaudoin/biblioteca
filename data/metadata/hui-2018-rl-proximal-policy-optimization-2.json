@@ -9,9 +9,8 @@
   "tags": [
     "trust region",
     "optimization",
-    "reinforcement-learning",
     "proximal-policy-optimization",
-    "policy-optimization"
+    "reinforcement-learning"
   ],
   "topics": [],
   "summary": "This paper explains Proximal Policy Optimization (PPO), a reinforcement learning algorithm that addresses convergence problems in policy gradient methods while remaining simpler to implement than natural policy gradient approaches. PPO uses a penalty-based constraint formulation instead of hard constraints, allowing first-order optimization methods like gradient descent to be effective. The explanation covers fundamental concepts including the Minorize-Maximization algorithm, line search methods, trust regions, and KL-divergence constraints that limit policy changes during optimization.",

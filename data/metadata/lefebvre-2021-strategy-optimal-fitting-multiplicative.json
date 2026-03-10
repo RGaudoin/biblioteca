@@ -8,11 +8,10 @@
   "year": 2021,
   "source": "BMC Medical Research Methodology",
   "tags": [
-    "survival analysis",
-    "hazards regression",
     "diagnostic tools",
     "additive models",
-    "cox-regression"
+    "cox-regression",
+    "survival-analysis"
   ],
   "topics": [],
   "summary": "This paper proposes a comprehensive strategy for optimal fitting of both multiplicative and additive hazards regression models in survival analysis. The strategy integrates classical diagnostic tools (Schoenfeld and martingale residuals) with less common approaches (pseudo-observations, martingale residual processes, and Arjas plots) to check model assumptions. The proposed methodology is demonstrated on myocardial infarction data (TRACE dataset) analyzing five covariates' effects on mortality hazard, showing that combining both model types provides improved data interpretation.",

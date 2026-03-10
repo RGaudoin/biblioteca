@@ -7,7 +7,6 @@
   "year": null,
   "source": "Lecture Series",
   "tags": [
-    "markov property",
     "state transitions",
     "reinforcement-learning",
     "markov-decision-processes"
