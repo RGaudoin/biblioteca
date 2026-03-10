@@ -107,6 +107,13 @@ def api_update_paper(paper_id):
         if field in data:
             paper[field] = data[field]
 
+    # Auto-register any new topic entities when topics are assigned
+    if "topics" in data:
+        for topic_slug in data["topics"]:
+            if topic_slug and not load_topic(topic_slug):
+                # Create entity with slug as name (user can rename later)
+                create_topic(topic_slug.replace("-", " ").title())
+
     save_paper(paper)
     return jsonify({"success": True, "paper": paper})
 
