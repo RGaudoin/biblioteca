@@ -91,9 +91,13 @@ def import_local(pdf_path, metadata_overrides=None, use_ai=False):
     pdf_filename = normalise_filename(title, authors, year, original=orig_name)
 
     # Copy file to appropriate directory
-    from papers import VERSIONABLE_EXTENSIONS, DOCUMENTS_DIR
+    from papers import VERSIONABLE_EXTENSIONS, DOCUMENTS_DIR, PRIVATE_DOCUMENTS_DIR
     ext = pdf_path.suffix.lower()
-    target_dir = DOCUMENTS_DIR if ext in VERSIONABLE_EXTENSIONS else PAPERS_DIR
+    is_private = overrides.get("private", False)
+    if ext in VERSIONABLE_EXTENSIONS:
+        target_dir = PRIVATE_DOCUMENTS_DIR if is_private else DOCUMENTS_DIR
+    else:
+        target_dir = PAPERS_DIR
     dest = target_dir / pdf_filename
     target_dir.mkdir(parents=True, exist_ok=True)
     shutil.copy2(str(pdf_path), str(dest))
