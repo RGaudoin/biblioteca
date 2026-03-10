@@ -463,9 +463,10 @@ def suggest_topics(pdf_path, all_existing_topics, current_topics=None, config=No
         existing_block = "No existing topics yet."
 
     prompt = f"""Given this document, suggest which topics it belongs to.
-Prefer existing topics from the list below where relevant — use their EXACT names.
-You may also suggest new topic names if none of the existing ones fit well.
-Always suggest at least one topic. Return ONLY a JSON list of topic name strings.
+Use existing topics from the list below ONLY if they are a genuinely good fit — use their EXACT names.
+Do NOT force a match to a generic or catch-all topic (e.g. "Other") when a more specific topic would be better.
+Suggest new, specific topic names whenever the existing ones are too broad or irrelevant.
+Aim for 2-4 topics. Return ONLY a JSON list of topic name strings.
 
 {existing_block}
 
