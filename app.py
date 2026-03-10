@@ -372,8 +372,9 @@ def api_import_file():
 
     from importers import import_local
     use_ai = request.form.get("ai", "false").lower() == "true"
+    private = request.form.get("private", "false").lower() == "true"
     result = import_local(tmp_path, use_ai=use_ai,
-                          metadata_overrides={"original_filename": file.filename})
+                          metadata_overrides={"original_filename": file.filename, "private": private})
 
     # Clean up
     Path(tmp_path).unlink(missing_ok=True)
@@ -391,7 +392,8 @@ def api_import_url():
         return jsonify({"success": False, "error": "URL is required"}), 400
 
     from importers import import_url
-    result = import_url(url)
+    private = data.get("private", False)
+    result = import_url(url, private=private)
 
     if result["success"]:
         return jsonify({"success": True, "paper_id": result["paper_id"],
@@ -407,7 +409,8 @@ def api_import_arxiv():
         return jsonify({"success": False, "error": "Arxiv ID is required"}), 400
 
     from importers import import_arxiv
-    result = import_arxiv(arxiv_id)
+    private = data.get("private", False)
+    result = import_arxiv(arxiv_id, private=private)
 
     if result["success"]:
         return jsonify({"success": True, "paper_id": result["paper_id"], "paper": result["metadata"]})
@@ -441,7 +444,8 @@ def api_import_batch():
     use_ai = data.get("ai", False)
     recursive = data.get("recursive", False)
     paths = data.get("paths")  # Optional: only import specific files
-    results = import_batch(folder, use_ai=use_ai, recursive=recursive, paths=paths)
+    private = data.get("private", False)
+    results = import_batch(folder, use_ai=use_ai, recursive=recursive, paths=paths, private=private)
 
     return jsonify({
         "success": True,
@@ -467,7 +471,8 @@ def api_import_links():
         tmp_path = tmp.name
 
     from importers import import_links_file
-    results = import_links_file(tmp_path)
+    private = data.get("private", False)
+    results = import_links_file(tmp_path, private=private)
     Path(tmp_path).unlink(missing_ok=True)
 
     return jsonify({
@@ -486,7 +491,8 @@ def api_import_emails():
         return jsonify({"success": False, "error": "Email text is required"}), 400
 
     from importers import import_emails
-    results = import_emails(text)
+    private = data.get("private", False)
+    results = import_emails(text, private=private)
 
     return jsonify({
         "success": True,

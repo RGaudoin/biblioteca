@@ -487,6 +487,7 @@ async function handleUpload(e) {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('ai', document.getElementById('upload-ai').checked);
+    formData.append('private', document.getElementById('import-private').checked);
 
     showResult('upload-result', 'info', 'Importing...');
 
@@ -513,7 +514,7 @@ async function handleUrlImport(e) {
         const resp = await fetch('/api/import/url', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ url })
+            body: JSON.stringify({ url, private: document.getElementById('import-private').checked })
         });
         const data = await resp.json();
         if (data.success) {
@@ -539,7 +540,7 @@ async function handleArxivImport(e) {
         const resp = await fetch('/api/import/arxiv', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ arxiv_id: arxivId })
+            body: JSON.stringify({ arxiv_id: arxivId, private: document.getElementById('import-private').checked })
         });
         const data = await resp.json();
         if (data.success) {
@@ -645,7 +646,7 @@ async function handleBatchImportAll() {
         const resp = await fetch('/api/import/batch', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ folder, ai, recursive, paths })
+            body: JSON.stringify({ folder, ai, recursive, paths, private: document.getElementById('import-private').checked })
         });
         const data = await resp.json();
         let msg = '';
@@ -669,7 +670,7 @@ async function handleLinksImport(e) {
         const resp = await fetch('/api/import/links', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text })
+            body: JSON.stringify({ text, private: document.getElementById('import-private').checked })
         });
         const data = await resp.json();
         let msg = '';
@@ -721,7 +722,7 @@ async function handleEmailImport(e) {
         const resp = await fetch('/api/import/emails', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text })
+            body: JSON.stringify({ text, private: document.getElementById('import-private').checked })
         });
         const data = await resp.json();
         let msg = `URLs found: ${data.urls_found.length}\n`;
