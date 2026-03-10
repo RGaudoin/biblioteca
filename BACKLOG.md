@@ -9,6 +9,7 @@
 - [ ] **CLI parity: duplicate detection** — expose find/merge duplicates via CLI (already in web API)
 - [ ] **CLI parity: consistency checker** — expose via CLI (already in web API)
 - [ ] **CLI parity: privacy toggle** — expose via CLI (already in web API)
+- [ ] **Private flag at import time** — allow setting `private=true` during import (single, batch, URL, arXiv), so papers go directly to `data/private/` without needing a separate toggle step afterwards. Especially useful for batch imports where all files should be private.
 - [ ] **Clean up README TODOs** — content type awareness, consistency checker, and private content separation are now implemented
 
 ## Long-term / Nice to haves
