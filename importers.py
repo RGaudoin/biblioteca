@@ -12,7 +12,9 @@ from pathlib import Path
 import requests
 
 from papers import (
+    DOCUMENTS_DIR,
     PAPERS_DIR,
+    PRIVATE_DOCUMENTS_DIR,
     create_paper_stub,
     find_by_arxiv_id,
     find_by_hash,
@@ -470,42 +472,152 @@ def _clean_url(url):
     return parsed._replace(query=new_query).geturl()
 
 
-def _fetch_page_title(url):
-    """Fetch a web page and extract its <title> or og:title."""
+def _fetch_page_metadata(url):
+    """Fetch a web page and extract metadata and article content."""
+    import html as html_mod
+
+    result = {"title": None, "author": None, "date": None, "description": None,
+              "source": None, "html": None}
     try:
         resp = requests.get(url, timeout=15, headers={"User-Agent": "Biblioteca/1.0"})
         resp.raise_for_status()
-        # Try og:title first, then <title>
-        og_match = re.search(r'<meta[^>]+property=["\']og:title["\'][^>]+content=["\']([^"\']+)["\']', resp.text, re.IGNORECASE)
-        if og_match:
-            return og_match.group(1).strip()
-        title_match = re.search(r'<title[^>]*>([^<]+)</title>', resp.text, re.IGNORECASE)
-        if title_match:
-            return title_match.group(1).strip()
+        text = resp.text
+        result["html"] = text
     except Exception:
-        pass
-    return None
+        return result
+
+    def meta_content(prop_or_name):
+        """Extract content from a meta tag by property or name."""
+        for attr in ("property", "name"):
+            m = re.search(
+                rf'<meta[^>]+{attr}=["\'](?:{prop_or_name})["\'][^>]+content=["\']([^"\']+)["\']',
+                text, re.IGNORECASE)
+            if m:
+                return html_mod.unescape(m.group(1).strip())
+        # Also try content before property/name
+        for attr in ("property", "name"):
+            m = re.search(
+                rf'<meta[^>]+content=["\']([^"\']+)["\'][^>]+{attr}=["\'](?:{prop_or_name})["\']',
+                text, re.IGNORECASE)
+            if m:
+                return html_mod.unescape(m.group(1).strip())
+        return None
+
+    result["title"] = meta_content("og:title") or None
+    if not result["title"]:
+        m = re.search(r'<title[^>]*>([^<]+)</title>', text, re.IGNORECASE)
+        if m:
+            result["title"] = html_mod.unescape(m.group(1).strip())
+
+    author = meta_content("author|article:author|og:article:author")
+    if author and not author.startswith("http"):
+        result["author"] = author
+    result["description"] = meta_content("og:description|description")
+    result["source"] = meta_content("og:site_name")
+
+    date_str = meta_content("article:published_time|date|publish_date")
+    if date_str:
+        # Try to extract just the date part (YYYY-MM-DD)
+        dm = re.match(r"(\d{4}-\d{2}-\d{2})", date_str)
+        result["date"] = dm.group(1) if dm else date_str
+
+    return result
+
+
+def _html_to_markdown(html_text):
+    """Extract article text from HTML and convert to simple markdown."""
+    import html as html_mod
+
+    # Try to find article content
+    article = re.search(r'<article[^>]*>(.*?)</article>', html_text, re.DOTALL | re.IGNORECASE)
+    content = article.group(1) if article else html_text
+
+    # Remove script, style, nav, header, footer, aside tags
+    for tag in ('script', 'style', 'nav', 'header', 'footer', 'aside', 'iframe', 'noscript'):
+        content = re.sub(rf'<{tag}[^>]*>.*?</{tag}>', '', content, flags=re.DOTALL | re.IGNORECASE)
+
+    # Convert common HTML to markdown
+    content = re.sub(r'<h1[^>]*>(.*?)</h1>', r'# \1\n\n', content, flags=re.DOTALL | re.IGNORECASE)
+    content = re.sub(r'<h2[^>]*>(.*?)</h2>', r'## \1\n\n', content, flags=re.DOTALL | re.IGNORECASE)
+    content = re.sub(r'<h3[^>]*>(.*?)</h3>', r'### \1\n\n', content, flags=re.DOTALL | re.IGNORECASE)
+    content = re.sub(r'<strong[^>]*>(.*?)</strong>', r'**\1**', content, flags=re.DOTALL | re.IGNORECASE)
+    content = re.sub(r'<b[^>]*>(.*?)</b>', r'**\1**', content, flags=re.DOTALL | re.IGNORECASE)
+    content = re.sub(r'<em[^>]*>(.*?)</em>', r'*\1*', content, flags=re.DOTALL | re.IGNORECASE)
+    content = re.sub(r'<i[^>]*>(.*?)</i>', r'*\1*', content, flags=re.DOTALL | re.IGNORECASE)
+    content = re.sub(r'<li[^>]*>(.*?)</li>', r'- \1\n', content, flags=re.DOTALL | re.IGNORECASE)
+    content = re.sub(r'<br\s*/?>', '\n', content, flags=re.IGNORECASE)
+    content = re.sub(r'<p[^>]*>(.*?)</p>', r'\1\n\n', content, flags=re.DOTALL | re.IGNORECASE)
+
+    # Strip remaining HTML tags
+    content = re.sub(r'<[^>]+>', '', content)
+    # Unescape HTML entities
+    content = html_mod.unescape(content)
+    # Collapse whitespace within lines, preserve paragraph breaks
+    lines = content.split('\n')
+    lines = [' '.join(line.split()) for line in lines]
+    content = '\n'.join(lines)
+    # Collapse multiple blank lines
+    content = re.sub(r'\n{3,}', '\n\n', content).strip()
+
+    return content
 
 
 def _import_generic_url(url, private=False):
-    """Store a generic URL as a reference, fetching page title if possible."""
+    """Import a web page: extract metadata, save article as markdown."""
     from urllib.parse import urlparse
 
     clean = _clean_url(url)
-    path_part = urlparse(clean).path.rstrip("/").split("/")[-1] or "web-reference"
+    parsed = urlparse(clean)
+    path_part = parsed.path.rstrip("/").split("/")[-1] or "web-reference"
+    domain = parsed.hostname or ""
 
-    title = _fetch_page_title(clean) or clean
-    paper_id = generate_id(fallback=path_part)
+    page = _fetch_page_metadata(clean)
+    title = page["title"] or clean
+    authors = [page["author"]] if page["author"] else []
+    year = None
+    if page["date"]:
+        ym = re.match(r"(\d{4})", page["date"])
+        if ym:
+            year = int(ym.group(1))
+    source = page["source"] or domain.replace("www.", "")
+
+    paper_id = generate_id(title, authors, year, fallback=path_part)
+
+    # Save article content as markdown if we got HTML
+    pdf_filename = None
+    note = "Stored as reference."
+    if page["html"]:
+        md_content = _html_to_markdown(page["html"])
+        if len(md_content) > 100:  # Only save if there's meaningful content
+            md_filename = f"{paper_id}.md"
+            target_dir = PRIVATE_DOCUMENTS_DIR if private else DOCUMENTS_DIR
+            md_path = target_dir / md_filename
+            # Add a header with source info
+            header = f"# {title}\n\n"
+            if authors:
+                header += f"**Author:** {', '.join(authors)}\n"
+            if source:
+                header += f"**Source:** {source}\n"
+            if page["date"]:
+                header += f"**Date:** {page['date']}\n"
+            header += f"**URL:** {clean}\n\n---\n\n"
+            md_path.write_text(header + md_content, encoding="utf-8")
+            pdf_filename = md_filename
+            note = "Downloaded article as markdown."
+
     metadata = create_paper_stub(
         paper_id,
-        pdf_filename=None,
+        pdf_filename=pdf_filename,
         title=title,
+        authors=authors,
+        year=year,
+        source=source,
         url=clean,
         import_source="url",
         private=private,
     )
 
-    return {"success": True, "paper_id": paper_id, "metadata": metadata, "note": "Stored as reference. Use AI extraction to populate metadata."}
+    return {"success": True, "paper_id": paper_id, "metadata": metadata, "note": note}
 
 
 # --- Batch import ---
