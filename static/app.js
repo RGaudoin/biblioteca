@@ -2,6 +2,7 @@
 
 let searchTimeout = null;
 let currentPaperId = null;
+let appConfig = {};
 
 // --- Navigation ---
 
@@ -244,10 +245,15 @@ function renderPaperModal(p) {
     const pdfBtn = p.pdf_filename
         ? `<button onclick="window.open('/api/pdf/${encodeURIComponent(p.pdf_filename)}', '_blank')">${viewLabel}</button>`
         : '';
-    const aiBtn = p.pdf_filename
-        ? `<button onclick="extractMetadata('${esc(p.id)}')">Extract Metadata (AI)</button>
-           <button onclick="summarisePaper('${esc(p.id)}')">Summarise (AI)</button>
-           <button onclick="suggestTopics('${esc(p.id)}')">Suggest Topics (AI)</button>`
+    const extractModel = appConfig.extraction_model || 'haiku';
+    const summaryModel = appConfig.summary_model || 'sonnet';
+    const shortModel = (m) => m.replace(/^claude-/, '').replace(/-\d{8}$/, '');
+    const hasContent = p.pdf_filename || p.url;
+    const aiBtn = hasContent
+        ? `<button onclick="extractMetadata('${esc(p.id)}')">Extract Metadata (${esc(shortModel(extractModel))})</button>
+           <button onclick="retagPaper('${esc(p.id)}')">Re-tag (${esc(shortModel(extractModel))})</button>
+           <button onclick="summarisePaper('${esc(p.id)}')">Re-summarise (${esc(shortModel(summaryModel))})</button>
+           <button onclick="suggestTopics('${esc(p.id)}')">Suggest Topics</button>`
         : '';
 
     const privacyBtn = p.private
@@ -300,6 +306,22 @@ async function summarisePaper(paperId) {
             renderPaperModal(data.paper);
         } else {
             alert('Summarisation failed: ' + (data.error || 'Unknown error'));
+        }
+    } catch (err) {
+        alert('Error: ' + err.message);
+    }
+}
+
+async function retagPaper(paperId) {
+    showModalLoading('Generating tags...');
+    try {
+        const resp = await fetch(`/api/ai/suggest-tags/${paperId}`, { method: 'POST' });
+        const data = await resp.json();
+        if (data.success) {
+            renderPaperModal(data.paper);
+            refreshLibrary();
+        } else {
+            alert('Tag generation failed: ' + (data.error || 'Unknown error'));
         }
     } catch (err) {
         alert('Error: ' + err.message);
@@ -1493,6 +1515,7 @@ async function loadSettings() {
     try {
         const resp = await fetch('/api/config');
         const config = await resp.json();
+        appConfig = config;
 
         const statusEl = document.getElementById('api-key-status');
         if (config.hasApiKey) {
@@ -1795,4 +1818,5 @@ function formatMeta(paper) {
 
 document.addEventListener('DOMContentLoaded', () => {
     refreshLibrary();
+    fetch('/api/config').then(r => r.json()).then(c => { appConfig = c; });
 });

@@ -812,6 +812,36 @@ def api_ai_summarise(paper_id):
     return jsonify({"success": True, "paper": paper, "summary": result["summary"]})
 
 
+@app.route("/api/ai/suggest-tags/<paper_id>", methods=["POST"])
+def api_ai_suggest_tags(paper_id):
+    """Generate new tag suggestions for a paper."""
+    paper = load_paper(paper_id)
+    if paper is None:
+        return jsonify({"error": "Paper not found"}), 404
+
+    config = load_config()
+    if not get_api_key(config):
+        return jsonify({"success": False, "error": "No API key configured"}), 400
+
+    # Find content to analyse
+    pdf_path = resolve_file_path(paper) if paper.get("pdf_filename") else None
+    if not pdf_path:
+        return jsonify({"success": False, "error": "Paper has no file to analyse"}), 400
+
+    from ai import suggest_tags
+    result = suggest_tags(str(pdf_path), existing_tags=paper.get("tags", []), config=config)
+
+    if not result or not result.get("tags"):
+        return jsonify({"success": False, "error": "Could not generate tag suggestions"}), 400
+
+    # Replace tags and record model
+    paper["tags"] = result["tags"]
+    paper["extraction_model"] = result["model"]
+    save_paper(paper)
+
+    return jsonify({"success": True, "paper": paper, "tags": result["tags"]})
+
+
 @app.route("/api/ai/suggest-tag-merges", methods=["POST"])
 def api_suggest_tag_merges():
     """Use AI to suggest tag consolidations."""
