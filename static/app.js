@@ -1817,7 +1817,18 @@ function formatMeta(paper) {
 
 // --- Init ---
 
+function updateAiLabels() {
+    const model = appConfig.extraction_model || 'haiku';
+    const short = model.replace(/^claude-/, '').replace(/-\d{8}$/, '');
+    for (const id of ['upload-ai', 'url-ai', 'batch-ai']) {
+        const el = document.getElementById(id);
+        if (el && el.parentElement) {
+            el.parentElement.childNodes[1].textContent = ` Use AI for metadata extraction (${short})`;
+        }
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     refreshLibrary();
-    fetch('/api/config').then(r => r.json()).then(c => { appConfig = c; });
+    fetch('/api/config').then(r => r.json()).then(c => { appConfig = c; updateAiLabels(); });
 });
