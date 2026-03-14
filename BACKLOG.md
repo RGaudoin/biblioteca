@@ -10,7 +10,7 @@
 - [ ] **CLI parity: consistency checker** — expose via CLI (already in web API)
 - [ ] **CLI parity: privacy toggle** — expose via CLI (already in web API)
 - [x] **Private flag at import time** — allow setting `private=true` during import (single, batch, URL, arXiv), so papers go directly to `data/private/` without needing a separate toggle step afterwards. Especially useful for batch imports where all files should be private.
-- [ ] **Merge import_links_file and import_emails** — both extract URLs from text and call import_url; consolidate into a single "import from text" function
+- [x] **Merge import_links_file and import_emails** — consolidated into `import_from_text`, single "Links / Email" UI tab
 - [ ] **Clean up README TODOs** — content type awareness, consistency checker, and private content separation are now implemented
 
 ## Long-term / Nice to haves
