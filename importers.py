@@ -3,6 +3,7 @@ Import pipeline for Biblioteca — local PDFs, arxiv, URLs, batch, email parsing
 """
 
 import hashlib
+import json
 import re
 import shutil
 import xml.etree.ElementTree as ET
@@ -513,6 +514,34 @@ def _fetch_page_metadata(url):
     if date_str:
         dm = re.match(r"(\d{4}-\d{2}-\d{2})", date_str)
         result["date"] = dm.group(1) if dm else date_str
+
+    # Try JSON-LD structured data for missing fields
+    for script in soup.find_all("script", type="application/ld+json"):
+        try:
+            ld = json.loads(script.string)
+            if isinstance(ld, list):
+                ld = ld[0]
+            if not isinstance(ld, dict):
+                continue
+            if not result["author"] and ld.get("author"):
+                authors = ld["author"]
+                if isinstance(authors, dict):
+                    authors = [authors]
+                if isinstance(authors, list):
+                    names = [a.get("name", "") for a in authors if isinstance(a, dict) and a.get("name")]
+                    if names:
+                        result["author"] = names[0] if len(names) == 1 else ", ".join(names)
+            if not result["date"] and ld.get("datePublished"):
+                dm = re.match(r"(\d{4}-\d{2}-\d{2})", ld["datePublished"])
+                result["date"] = dm.group(1) if dm else ld["datePublished"]
+            if not result["title"] and ld.get("headline"):
+                result["title"] = ld["headline"]
+            if not result["source"] and ld.get("publisher"):
+                pub = ld["publisher"]
+                if isinstance(pub, dict):
+                    result["source"] = pub.get("name")
+        except (json.JSONDecodeError, TypeError, AttributeError):
+            continue
 
     return result
 
