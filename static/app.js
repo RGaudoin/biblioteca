@@ -1810,6 +1810,7 @@ function formatMeta(paper) {
     if (paper.authors && paper.authors.length) parts.push(`Authors: ${paper.authors.join(', ')}`);
     if (paper.year) parts.push(`Year: ${paper.year}`);
     if (paper.pdf_filename) parts.push(`PDF: ${paper.pdf_filename}`);
+    if (paper.extraction_model) parts.push(`Extracted with: ${paper.extraction_model}`);
     return parts.join('\n');
 }
 
