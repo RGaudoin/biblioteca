@@ -24,3 +24,4 @@
 - [ ] **Render-to-PDF for web articles** — optional headless browser (playwright) to render web pages as PDF for full visual fidelity; offer as "Download as PDF" button alongside the default lightweight markdown extraction
 - [ ] **Separate tagging model setting** — add `tagging_model` to config so tag generation can use a different model from metadata extraction
 - [ ] **Encrypted private backup** — optional encrypted mirror of private content in `data/private-encrypted/` (git-tracked)
+- [ ] **Long list handling** — paper pickers, tag lists, and topic lists will need search/filter and possibly pagination as the library grows; currently all are simple flat lists

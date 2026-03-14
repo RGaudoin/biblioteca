@@ -8,9 +8,9 @@
   "source": "Chalmers University of Technology / University of Gothenburg",
   "tags": [
     "censored data",
-    "recurrent-neural-networks",
+    "weibull",
     "survival-analysis",
-    "weibull"
+    "recurrent-neural-networks"
   ],
   "topics": [],
   "summary": "This thesis proposes WTTE-RNN, a novel model for sequential prediction of time-to-event using Weibull distributions parameterized by recurrent neural networks. The framework handles continuous/discrete time, right censoring, recurrent events, and time-varying covariates common in applications like customer churn and failure prediction. The model is evaluated on simulated data and the CMAPSS jet engine dataset, demonstrating advantages over naive baseline methods.",

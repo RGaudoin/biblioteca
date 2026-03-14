@@ -564,7 +564,7 @@ def api_update_collection(collection_id):
         return jsonify({"error": "Collection not found"}), 404
 
     data = request.json or {}
-    for field in ["title", "description", "sections", "external_links"]:
+    for field in ["title", "description", "sections", "external_links", "source_topic"]:
         if field in data:
             coll[field] = data[field]
 

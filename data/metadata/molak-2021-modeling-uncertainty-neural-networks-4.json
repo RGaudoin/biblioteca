@@ -9,8 +9,8 @@
   "tags": [
     "tensorflow probability",
     "probabilistic modeling",
-    "neural-networks",
-    "uncertainty-quantification"
+    "uncertainty-quantification",
+    "neural-networks"
   ],
   "topics": [],
   "summary": "This tutorial introduces aleatoric uncertainty (data uncertainty) in neural networks using TensorFlow Probability library. It explains that aleatoric uncertainty represents unpredictable differences in outcomes from repeated experiments and cannot be reduced by adding more data, then demonstrates practical methods for modeling it using probabilistic layers and the log_prob() function.",

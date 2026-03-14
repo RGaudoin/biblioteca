@@ -14,8 +14,8 @@
     "cardiac surgery",
     "random survival forest",
     "machine-learning",
-    "survival-analysis",
-    "weibull"
+    "weibull",
+    "survival-analysis"
   ],
   "topics": [],
   "summary": "This paper presents a comparative study between Weibull regression and random survival forest (RSF) models for analyzing survival data from cardiac surgery patients. The models are evaluated using error rate, Harrell C-index, and variable importance, with RSF showing superior predictive performance (20.31% error rate) compared to Weibull (23.82%). The methodology is demonstrated on length of stay data from cardiac surgery patients at the Heart Institute of the University of São Paulo, Brazil.",
