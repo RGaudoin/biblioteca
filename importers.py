@@ -3,6 +3,7 @@ Import pipeline for Biblioteca — local PDFs, arxiv, URLs, batch, email parsing
 """
 
 import hashlib
+import json
 import re
 import shutil
 import xml.etree.ElementTree as ET
@@ -12,7 +13,9 @@ from pathlib import Path
 import requests
 
 from papers import (
+    DOCUMENTS_DIR,
     PAPERS_DIR,
+    PRIVATE_DOCUMENTS_DIR,
     create_paper_stub,
     find_by_arxiv_id,
     find_by_hash,
@@ -119,6 +122,8 @@ def import_local(pdf_path, metadata_overrides=None, use_ai=False):
         "import_source": overrides.get("import_source", "local"),
         "original_filename": overrides.get("original_filename") or pdf_path.name,
         "pdf_hash": compute_hash(str(dest)),
+        "summary_model": ai_metadata.get("summary_model"),
+        "extraction_model": ai_metadata.get("extraction_model"),
     }
 
     metadata = create_paper_stub(paper_id, pdf_filename, **meta_fields)
@@ -278,22 +283,52 @@ def import_arxiv(arxiv_input, private=False):
         pdf_hash=compute_hash(str(dest)),
     )
 
-    return {"success": True, "paper_id": paper_id, "metadata": metadata}
+    return {"success": True, "paper_id": paper_id, "metadata": metadata,
+            "note": "Metadata from arXiv API (author abstract, category tag only). Use Re-tag and Re-summarise for richer results."}
 
 
 # --- URL import ---
 
-def import_url(url, private=False):
+def _is_url_safe(url):
+    """Check that a URL is safe to fetch server-side (anti-SSRF)."""
+    from urllib.parse import urlparse
+    import ipaddress
+    import socket
+
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https"):
+        return False, f"Unsupported scheme: {parsed.scheme}"
+    hostname = parsed.hostname
+    if not hostname:
+        return False, "No hostname in URL"
+    try:
+        addr = ipaddress.ip_address(hostname)
+    except ValueError:
+        try:
+            addr = ipaddress.ip_address(socket.gethostbyname(hostname))
+        except socket.gaierror:
+            return False, f"Cannot resolve hostname: {hostname}"
+    if addr.is_private or addr.is_loopback or addr.is_link_local or addr.is_reserved:
+        return False, "URLs pointing to private/internal addresses are not allowed"
+    return True, None
+
+
+def import_url(url, private=False, use_ai=False):
     """Import a paper from a URL. Routes to specific handlers based on URL pattern.
 
     Args:
         url: URL to import from.
         private: If True, mark the paper as private on import.
+        use_ai: If True, run AI metadata extraction after import.
 
     Returns:
         dict with 'success', 'paper_id', 'metadata', and optionally 'error'.
     """
     url = url.strip()
+
+    safe, reason = _is_url_safe(url)
+    if not safe:
+        return {"success": False, "error": reason}
 
     # Arxiv
     if "arxiv.org" in url:
@@ -301,7 +336,7 @@ def import_url(url, private=False):
 
     # Direct PDF link
     if url.lower().endswith(".pdf"):
-        return _import_pdf_url(url, private=private)
+        return _import_pdf_url(url, private=private, use_ai=use_ai)
 
     # DOI
     doi_match = re.search(r"(10\.\d{4,}/[^\s]+)", url)
@@ -313,10 +348,10 @@ def import_url(url, private=False):
         return _import_github_ref(url, private=private)
 
     # Generic URL — try to download as PDF or store as reference
-    return _import_generic_url(url, private=private)
+    return _import_generic_url(url, private=private, use_ai=use_ai)
 
 
-def _import_pdf_url(url, private=False):
+def _import_pdf_url(url, private=False, use_ai=False):
     """Download a PDF from a direct URL and import it."""
     try:
         resp = requests.get(url, timeout=60, headers={"User-Agent": "Biblioteca/1.0"})
@@ -337,7 +372,7 @@ def _import_pdf_url(url, private=False):
         tmp.write(resp.content)
         tmp_path = tmp.name
 
-    result = import_local(tmp_path, metadata_overrides={"url": url, "import_source": "url", "original_filename": filename, "private": private})
+    result = import_local(tmp_path, use_ai=use_ai, metadata_overrides={"url": url, "import_source": "url", "original_filename": filename, "private": private})
 
     # Clean up temp file
     Path(tmp_path).unlink(missing_ok=True)
@@ -430,19 +465,187 @@ def _import_github_ref(url, private=False):
     return {"success": True, "paper_id": paper_id, "metadata": metadata, "note": "Stored as reference (no PDF)."}
 
 
-def _import_generic_url(url, private=False):
-    """Store a generic URL as a reference."""
-    paper_id = generate_id(fallback=url.split("/")[-1] or "web-reference")
+def _clean_url(url):
+    """Strip tracking parameters (utm_*, gaa_*) from a URL."""
+    from urllib.parse import urlparse, urlencode, parse_qs
+
+    parsed = urlparse(url)
+    params = parse_qs(parsed.query, keep_blank_values=True)
+    cleaned = {k: v for k, v in params.items()
+               if not k.startswith(("utm_", "gaa_"))}
+    new_query = urlencode(cleaned, doseq=True) if cleaned else ""
+    return parsed._replace(query=new_query).geturl()
+
+
+def _fetch_page_metadata(url):
+    """Fetch a web page and extract metadata and article content."""
+    from bs4 import BeautifulSoup
+
+    result = {"title": None, "author": None, "date": None, "description": None,
+              "source": None, "html": None}
+    try:
+        resp = requests.get(url, timeout=15, headers={"User-Agent": "Biblioteca/1.0"})
+        resp.raise_for_status()
+        result["html"] = resp.text
+    except Exception:
+        return result
+
+    soup = BeautifulSoup(resp.text, "html.parser")
+
+    def meta(names):
+        """Find first matching meta tag content by property or name."""
+        for name in names:
+            tag = soup.find("meta", attrs={"property": name})
+            if not tag:
+                tag = soup.find("meta", attrs={"name": name})
+            if tag and tag.get("content"):
+                return tag["content"].strip()
+        return None
+
+    result["title"] = meta(["og:title"]) or (soup.title.string.strip() if soup.title and soup.title.string else None)
+
+    author = meta(["author", "article:author", "og:article:author"])
+    if author and not author.startswith("http"):
+        result["author"] = author
+    result["description"] = meta(["og:description", "description"])
+    result["source"] = meta(["og:site_name"])
+
+    date_str = meta(["article:published_time", "date", "publish_date"])
+    if date_str:
+        dm = re.match(r"(\d{4}-\d{2}-\d{2})", date_str)
+        result["date"] = dm.group(1) if dm else date_str
+
+    # Try JSON-LD structured data for missing fields
+    for script in soup.find_all("script", type="application/ld+json"):
+        try:
+            ld = json.loads(script.string)
+            if isinstance(ld, list):
+                ld = ld[0]
+            if not isinstance(ld, dict):
+                continue
+            if not result["author"] and ld.get("author"):
+                authors = ld["author"]
+                if isinstance(authors, dict):
+                    authors = [authors]
+                if isinstance(authors, list):
+                    names = [a.get("name", "") for a in authors if isinstance(a, dict) and a.get("name")]
+                    if names:
+                        result["author"] = names[0] if len(names) == 1 else ", ".join(names)
+            if not result["date"] and ld.get("datePublished"):
+                dm = re.match(r"(\d{4}-\d{2}-\d{2})", ld["datePublished"])
+                result["date"] = dm.group(1) if dm else ld["datePublished"]
+            if not result["title"] and ld.get("headline"):
+                result["title"] = ld["headline"]
+            if not result["source"] and ld.get("publisher"):
+                pub = ld["publisher"]
+                if isinstance(pub, dict):
+                    result["source"] = pub.get("name")
+        except (json.JSONDecodeError, TypeError, AttributeError):
+            continue
+
+    return result
+
+
+def _html_to_markdown(html_text):
+    """Extract article text from HTML and convert to markdown."""
+    from bs4 import BeautifulSoup
+    import html2text
+
+    soup = BeautifulSoup(html_text, "html.parser")
+
+    # Remove non-content elements
+    for tag in soup.find_all(["script", "style", "nav", "header", "footer",
+                              "aside", "iframe", "noscript", "form"]):
+        tag.decompose()
+
+    # Prefer <article> content if present
+    article = soup.find("article")
+    content_html = str(article) if article else str(soup.body or soup)
+
+    h = html2text.HTML2Text()
+    h.ignore_links = False
+    h.ignore_images = True
+    h.body_width = 0  # No line wrapping
+    h.skip_internal_links = True
+
+    md = h.handle(content_html)
+
+    # Collapse excessive blank lines
+    md = re.sub(r'\n{3,}', '\n\n', md).strip()
+    return md
+
+
+def _import_generic_url(url, private=False, use_ai=False):
+    """Import a web page: extract metadata, save article as markdown."""
+    from urllib.parse import urlparse
+
+    clean = _clean_url(url)
+    parsed = urlparse(clean)
+    path_part = parsed.path.rstrip("/").split("/")[-1] or "web-reference"
+    domain = parsed.hostname or ""
+
+    page = _fetch_page_metadata(clean)
+    title = page["title"] or clean
+    authors = [page["author"]] if page["author"] else []
+    year = None
+    if page["date"]:
+        ym = re.match(r"(\d{4})", page["date"])
+        if ym:
+            year = int(ym.group(1))
+    source = page["source"] or domain.replace("www.", "")
+
+    paper_id = generate_id(title, authors, year, fallback=path_part)
+
+    # Save article content as markdown if we got HTML
+    pdf_filename = None
+    md_path = None
+    note = "Stored as reference."
+    if page["html"]:
+        md_content = _html_to_markdown(page["html"])
+        if len(md_content) > 100:  # Only save if there's meaningful content
+            md_filename = f"{paper_id}.md"
+            target_dir = PRIVATE_DOCUMENTS_DIR if private else DOCUMENTS_DIR
+            md_path = target_dir / md_filename
+            # Add a header with source info
+            header = f"# {title}\n\n"
+            if authors:
+                header += f"**Author:** {', '.join(authors)}\n"
+            if source:
+                header += f"**Source:** {source}\n"
+            if page["date"]:
+                header += f"**Date:** {page['date']}\n"
+            header += f"**URL:** {clean}\n\n---\n\n"
+            md_path.write_text(header + md_content, encoding="utf-8")
+            pdf_filename = md_filename
+            note = "Downloaded article as markdown."
+
+    # Run AI extraction on the saved markdown
+    ai_metadata = {}
+    if use_ai and md_path and md_path.exists():
+        try:
+            from ai import extract_metadata
+            ai_metadata = extract_metadata(str(md_path))
+        except Exception:
+            pass
+
+    # AI results override HTML meta tags where available
     metadata = create_paper_stub(
         paper_id,
-        pdf_filename=None,
-        title=url,
-        url=url,
+        pdf_filename=pdf_filename,
+        title=ai_metadata.get("title") or title,
+        authors=ai_metadata.get("authors") or authors,
+        year=ai_metadata.get("year") or year,
+        source=ai_metadata.get("source") or source,
+        tags=ai_metadata.get("tags", []),
+        summary=ai_metadata.get("summary"),
+        summary_model=ai_metadata.get("summary_model"),
+        extraction_model=ai_metadata.get("extraction_model"),
+        url=clean,
         import_source="url",
         private=private,
     )
 
-    return {"success": True, "paper_id": paper_id, "metadata": metadata, "note": "Stored as reference. Use AI extraction to populate metadata."}
+    return {"success": True, "paper_id": paper_id, "metadata": metadata, "note": note}
 
 
 # --- Batch import ---
@@ -540,15 +743,20 @@ def extract_urls_from_text(text):
     return cleaned
 
 
-def import_emails(text_or_path, private=False):
-    """Parse email text (or file path) to extract URLs and import each.
+def import_from_text(text_or_path, private=False, use_ai=False):
+    """Import papers from text containing URLs or arxiv IDs.
+
+    Accepts either raw text (e.g. pasted email, list of links) or a file path.
+    Extracts URLs from unstructured text and also recognises bare arxiv IDs
+    on their own lines. Lines starting with # are treated as comments.
 
     Args:
-        text_or_path: Either raw email text or path to a text file.
+        text_or_path: Raw text or path to a text file.
         private: If True, mark all imported papers as private.
+        use_ai: If True, run AI metadata extraction on imported papers.
 
     Returns:
-        dict with 'urls_found', 'imported', 'failed' lists.
+        dict with 'urls_found', 'imported', 'failed', 'skipped' lists.
     """
     # If it looks like a file path, read it
     path = Path(text_or_path)
@@ -558,68 +766,50 @@ def import_emails(text_or_path, private=False):
     else:
         text = text_or_path
 
+    # Extract URLs from the text
     urls = extract_urls_from_text(text)
 
-    results = {"urls_found": urls, "imported": [], "failed": []}
-
-    for url in urls:
-        # Skip Yahoo Mail boilerplate URLs
-        if "yahoo.com" in url and "mail" in url.lower():
-            continue
-
-        result = import_url(url, private=private)
-        if result["success"]:
-            results["imported"].append({"url": url, "paper_id": result["paper_id"], "note": result.get("note")})
-        else:
-            results["failed"].append({"url": url, "error": result["error"]})
-
-    return results
-
-
-# --- Link file import ---
-
-def import_links_file(file_path, private=False):
-    """Import papers from a text file containing URLs or arxiv IDs, one per line.
-
-    Lines starting with # are treated as comments. Blank lines are skipped.
-
-    Args:
-        file_path: Path to text file.
-        private: If True, mark all imported papers as private.
-
-    Returns:
-        dict with 'imported', 'failed', 'skipped' lists.
-    """
-    path = Path(file_path)
-    if not path.exists():
-        return {"imported": [], "failed": [{"line": file_path, "error": "File not found"}], "skipped": []}
-
-    with open(path, "r", encoding="utf-8") as f:
-        lines = f.readlines()
-
-    results = {"imported": [], "failed": [], "skipped": []}
-
-    for line in lines:
+    # Also check for bare arxiv IDs on their own lines
+    arxiv_ids = []
+    for line in text.splitlines():
         line = line.strip()
         if not line or line.startswith("#"):
             continue
-
-        # Detect arxiv ID (bare, no URL)
         arxiv_match = ARXIV_ID_PATTERN.match(line)
         if arxiv_match and "://" not in line:
-            result = import_arxiv(line, private=private)
-        elif "://" in line:
-            result = import_url(line, private=private)
-        else:
-            results["skipped"].append({"line": line, "reason": "Not a recognised URL or arxiv ID"})
+            arxiv_ids.append(line)
+
+    results = {"urls_found": urls, "imported": [], "failed": [], "skipped": []}
+
+    # Import URLs
+    for url in urls:
+        # Skip mail boilerplate URLs
+        if any(skip in url for skip in ["yahoo.com/mail", "mail.google.com/mail"]):
             continue
 
+        result = import_url(url, private=private, use_ai=use_ai)
         if result["success"]:
-            results["imported"].append({"line": line, "paper_id": result["paper_id"], "note": result.get("note")})
+            results["imported"].append({"line": url, "paper_id": result["paper_id"], "note": result.get("note")})
         else:
-            results["failed"].append({"line": line, "error": result["error"]})
+            results["failed"].append({"line": url, "error": result["error"]})
+
+    # Import bare arxiv IDs
+    for arxiv_id in arxiv_ids:
+        result = import_arxiv(arxiv_id, private=private)
+        if result["success"]:
+            results["imported"].append({"line": arxiv_id, "paper_id": result["paper_id"], "note": result.get("note")})
+        else:
+            results["failed"].append({"line": arxiv_id, "error": result["error"]})
 
     return results
+
+
+# Backwards compatibility
+def import_emails(text_or_path, private=False):
+    return import_from_text(text_or_path, private=private)
+
+def import_links_file(file_path, private=False):
+    return import_from_text(file_path, private=private)
 
 
 # --- Reading list import ---

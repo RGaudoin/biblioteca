@@ -246,6 +246,8 @@ def create_paper_stub(paper_id, pdf_filename, **kwargs):
         "pdf_hash": kwargs.get("pdf_hash"),
         "content_type": kwargs.get("content_type", auto_type),
         "versionable": kwargs.get("versionable", auto_versionable),
+        "summary_model": kwargs.get("summary_model"),
+        "extraction_model": kwargs.get("extraction_model"),
     }
     save_paper(metadata)
     return metadata

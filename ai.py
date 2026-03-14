@@ -165,6 +165,7 @@ Document text:
                 extracted["tags"] = normalised
             # Merge with PDF metadata (Claude takes priority)
             result = {**pdf_meta, **{k: v for k, v in extracted.items() if v is not None}}
+            result["extraction_model"] = model
             if result.get("summary"):
                 result["summary_model"] = model
             return result
@@ -174,6 +175,70 @@ Document text:
         traceback.print_exc()
 
     return pdf_meta
+
+
+def suggest_tags(file_path, existing_tags=None, config=None):
+    """Generate tag suggestions for a document using Claude API.
+
+    Returns dict with 'tags' list and 'model', or empty dict on failure.
+    """
+    if config is None:
+        config = load_config()
+
+    api_key = get_api_key(config)
+    if not api_key:
+        return {}
+
+    text = _extract_text_from_file(file_path)
+    if not text:
+        return {}
+
+    if len(text) > 15000:
+        text = text[:15000] + "\n[... truncated ...]"
+
+    try:
+        import anthropic
+    except ImportError:
+        return {}
+
+    model = config.get("extraction_model", "claude-haiku-4-5-20251001")
+
+    existing_note = ""
+    if existing_tags:
+        existing_note = f"\nExisting tags on this document: {', '.join(existing_tags)}\nYou may keep, replace, or add to these as appropriate.\n"
+
+    prompt = f"""Suggest 3-7 relevant tags for this document. Tags should be lowercase, hyphen-separated, and specific.
+{existing_note}
+Return ONLY a JSON list of tag strings, e.g. ["tag-one", "tag-two", "tag-three"].
+
+Document text:
+{text}"""
+
+    try:
+        client = anthropic.Anthropic(api_key=api_key)
+        response = client.messages.create(
+            model=model,
+            max_tokens=256,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        _track_usage(config, response.usage.input_tokens, response.usage.output_tokens, model=model)
+
+        response_text = response.content[0].text
+        json_match = re.search(r"\[[\s\S]*\]", response_text)
+        if json_match:
+            tags = json.loads(json_match.group())
+            seen = set()
+            normalised = []
+            for tag in tags:
+                t = re.sub(r"\s+", "-", tag.strip().lower())
+                if t and t not in seen:
+                    seen.add(t)
+                    normalised.append(t)
+            return {"tags": normalised, "model": model}
+    except Exception:
+        pass
+
+    return {}
 
 
 def summarise_paper(pdf_path, config=None, style="brief"):

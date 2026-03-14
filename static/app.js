@@ -2,6 +2,7 @@
 
 let searchTimeout = null;
 let currentPaperId = null;
+let appConfig = {};
 
 // --- Navigation ---
 
@@ -202,6 +203,10 @@ async function openPaper(paperId) {
     try {
         const resp = await fetch(`/api/papers/${paperId}`);
         const paper = await resp.json();
+        if (paper.error) {
+            alert('Error loading paper: ' + paper.error);
+            return;
+        }
         renderPaperModal(paper);
         document.getElementById('paper-modal').classList.add('active');
     } catch (err) {
@@ -229,6 +234,7 @@ function renderPaperModal(p) {
         { label: 'Type', value: p.content_type ? `${p.content_type}${p.versionable ? ' (versioned)' : ''}` : null },
         { label: 'Added', value: p.added },
         { label: 'Import source', value: p.import_source },
+        { label: 'Extraction model', value: p.extraction_model },
     ];
 
     const fieldsHtml = fields
@@ -243,10 +249,15 @@ function renderPaperModal(p) {
     const pdfBtn = p.pdf_filename
         ? `<button onclick="window.open('/api/pdf/${encodeURIComponent(p.pdf_filename)}', '_blank')">${viewLabel}</button>`
         : '';
-    const aiBtn = p.pdf_filename
-        ? `<button onclick="extractMetadata('${esc(p.id)}')">Extract Metadata (AI)</button>
-           <button onclick="summarisePaper('${esc(p.id)}')">Summarise (AI)</button>
-           <button onclick="suggestTopics('${esc(p.id)}')">Suggest Topics (AI)</button>`
+    const extractModel = appConfig.extraction_model || 'haiku';
+    const summaryModel = appConfig.summary_model || 'sonnet';
+    const shortModel = (m) => m.replace(/^claude-/, '').replace(/-\d{8}$/, '');
+    const hasContent = p.pdf_filename || p.url;
+    const aiBtn = hasContent
+        ? `<button onclick="extractMetadata('${esc(p.id)}')">Extract Metadata (${esc(shortModel(extractModel))})</button>
+           <button onclick="retagPaper('${esc(p.id)}')">Re-tag (${esc(shortModel(extractModel))})</button>
+           <button onclick="summarisePaper('${esc(p.id)}')">Re-summarise (${esc(shortModel(summaryModel))})</button>
+           <button onclick="suggestTopics('${esc(p.id)}')">Suggest Topics</button>`
         : '';
 
     const privacyBtn = p.private
@@ -299,6 +310,88 @@ async function summarisePaper(paperId) {
             renderPaperModal(data.paper);
         } else {
             alert('Summarisation failed: ' + (data.error || 'Unknown error'));
+        }
+    } catch (err) {
+        alert('Error: ' + err.message);
+    }
+}
+
+async function retagPaper(paperId) {
+    showModalLoading('Generating tag suggestions...');
+    try {
+        const resp = await fetch(`/api/ai/suggest-tags/${paperId}`, { method: 'POST' });
+        const data = await resp.json();
+        if (!data.success) {
+            alert('Tag generation failed: ' + (data.error || 'Unknown error'));
+            openPaper(paperId);
+            return;
+        }
+
+        const current = data.current_tags || [];
+        const suggested = data.suggested_tags || [];
+        // Find genuinely new suggestions (not already in current)
+        const newTags = suggested.filter(t => !current.includes(t));
+
+        let html = `<p style="opacity:0.6;font-size:0.85em">Model: ${esc(data.model)}</p>`;
+
+        if (current.length) {
+            html += '<h4>Current tags</h4>';
+            current.forEach(t => {
+                html += `<label style="display:block;margin:0.25rem 0">
+                    <input type="checkbox" class="retag-current" value="${esc(t)}" checked> ${esc(t)}
+                </label>`;
+            });
+        }
+
+        if (newTags.length) {
+            html += '<h4>Suggested new tags</h4>';
+            newTags.forEach(t => {
+                html += `<label style="display:flex;align-items:center;gap:0.5rem;margin:0.25rem 0">
+                    <input type="checkbox" class="retag-suggested" checked>
+                    <input type="text" class="retag-suggested-text" value="${esc(t)}" style="flex:1;padding:0.2rem 0.4rem">
+                </label>`;
+            });
+        } else {
+            html += '<p><em>No new tags suggested beyond current ones.</em></p>';
+        }
+
+        html += `<div style="margin-top:1rem;display:flex;gap:0.5rem">
+            <button onclick="applyRetag('${esc(paperId)}')">Apply</button>
+            <button onclick="openPaper('${esc(paperId)}')">Cancel</button>
+        </div>`;
+
+        document.getElementById('modal-body').innerHTML = html;
+    } catch (err) {
+        alert('Error: ' + err.message);
+        openPaper(paperId);
+    }
+}
+
+async function applyRetag(paperId) {
+    // Collect kept current tags
+    const tags = [];
+    document.querySelectorAll('.retag-current:checked').forEach(cb => {
+        tags.push(cb.value);
+    });
+    // Collect accepted new tags (with edited values)
+    document.querySelectorAll('.retag-suggested:checked').forEach(cb => {
+        const textInput = cb.closest('label').querySelector('.retag-suggested-text');
+        const val = textInput.value.trim();
+        if (val && !tags.includes(val)) tags.push(val);
+    });
+
+    try {
+        const resp = await fetch(`/api/papers/${paperId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tags })
+        });
+        const data = await resp.json();
+        if (data.success) {
+            openPaper(paperId);
+            refreshLibrary();
+        } else {
+            alert('Error saving tags: ' + (data.error || 'Unknown'));
         }
     } catch (err) {
         alert('Error: ' + err.message);
@@ -514,7 +607,7 @@ async function handleUrlImport(e) {
         const resp = await fetch('/api/import/url', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ url, private: document.getElementById('import-private').checked })
+            body: JSON.stringify({ url, private: document.getElementById('import-private').checked, ai: document.getElementById('url-ai').checked })
         });
         const data = await resp.json();
         if (data.success) {
@@ -664,16 +757,17 @@ async function handleBatchImportAll() {
 async function handleLinksImport(e) {
     e.preventDefault();
     const text = document.getElementById('links-text').value.trim();
-    showResult('links-result', 'info', 'Importing links...');
+    showResult('links-result', 'info', 'Importing...');
 
     try {
         const resp = await fetch('/api/import/links', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text, private: document.getElementById('import-private').checked })
+            body: JSON.stringify({ text, private: document.getElementById('import-private').checked, ai: document.getElementById('links-ai').checked })
         });
         const data = await resp.json();
         let msg = '';
+        if (data.urls_found && data.urls_found.length) msg += `URLs found: ${data.urls_found.length}\n`;
         if (data.imported && data.imported.length) msg += `Imported (${data.imported.length}):\n` + data.imported.map(i => `  ${i.paper_id} (${i.line})`).join('\n') + '\n';
         if (data.skipped && data.skipped.length) msg += `\nSkipped (${data.skipped.length}):\n` + data.skipped.map(s => `  ${s.line}: ${s.reason}`).join('\n') + '\n';
         if (data.failed && data.failed.length) msg += `\nFailed (${data.failed.length}):\n` + data.failed.map(f => `  ${f.line}: ${f.error}`).join('\n');
@@ -713,28 +807,6 @@ async function handleReadingListImport(e) {
     }
 }
 
-async function handleEmailImport(e) {
-    e.preventDefault();
-    const text = document.getElementById('email-text').value.trim();
-    showResult('email-result', 'info', 'Parsing and importing...');
-
-    try {
-        const resp = await fetch('/api/import/emails', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text, private: document.getElementById('import-private').checked })
-        });
-        const data = await resp.json();
-        let msg = `URLs found: ${data.urls_found.length}\n`;
-        data.urls_found.forEach(u => msg += `  ${u}\n`);
-        if (data.imported.length) msg += `\nImported (${data.imported.length}):\n` + data.imported.map(i => `  ${i.paper_id} (${i.url})`).join('\n') + '\n';
-        if (data.failed.length) msg += `\nFailed (${data.failed.length}):\n` + data.failed.map(f => `  ${f.url}: ${f.error}`).join('\n');
-        showResult('email-result', data.failed.length ? 'error' : 'success', msg);
-        refreshLibrary();
-    } catch (err) {
-        showResult('email-result', 'error', `Error: ${err.message}`);
-    }
-}
 
 
 // --- Collections ---
@@ -1492,6 +1564,7 @@ async function loadSettings() {
     try {
         const resp = await fetch('/api/config');
         const config = await resp.json();
+        appConfig = config;
 
         const statusEl = document.getElementById('api-key-status');
         if (config.hasApiKey) {
@@ -1771,7 +1844,7 @@ function esc(str) {
     if (str === null || str === undefined) return '';
     const div = document.createElement('div');
     div.textContent = String(str);
-    return div.innerHTML;
+    return div.innerHTML.replace(/'/g, '&#39;');
 }
 
 function showResult(elementId, type, message) {
@@ -1786,12 +1859,25 @@ function formatMeta(paper) {
     if (paper.authors && paper.authors.length) parts.push(`Authors: ${paper.authors.join(', ')}`);
     if (paper.year) parts.push(`Year: ${paper.year}`);
     if (paper.pdf_filename) parts.push(`PDF: ${paper.pdf_filename}`);
+    if (paper.extraction_model) parts.push(`Extracted with: ${paper.extraction_model}`);
     return parts.join('\n');
 }
 
 
 // --- Init ---
 
+function updateAiLabels() {
+    const model = appConfig.extraction_model || 'haiku';
+    const short = model.replace(/^claude-/, '').replace(/-\d{8}$/, '');
+    for (const id of ['upload-ai', 'url-ai', 'batch-ai', 'links-ai']) {
+        const el = document.getElementById(id);
+        if (el && el.parentElement) {
+            el.parentElement.childNodes[1].textContent = ` Use AI for metadata extraction (${short})`;
+        }
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     refreshLibrary();
+    fetch('/api/config').then(r => r.json()).then(c => { appConfig = c; updateAiLabels(); });
 });

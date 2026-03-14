@@ -1,0 +1,32 @@
+{
+  "id": "song-2026-large-language-model-reasoning",
+  "title": "Large Language Model Reasoning Failures",
+  "authors": [
+    "Peiyang Song",
+    "Pengrui Han",
+    "Noah Goodman"
+  ],
+  "year": 2026,
+  "source": "Transactions on Machine Learning Research",
+  "tags": [
+    "large-language-models",
+    "reasoning-failures",
+    "cognitive-biases",
+    "llm-evaluation",
+    "interpretability"
+  ],
+  "topics": [],
+  "summary": "This comprehensive survey presents the first systematic categorization of reasoning failures in Large Language Models (LLMs), distinguishing between embodied and non-embodied reasoning types, and classifying failures as fundamental, application-specific, or robustness issues. The paper provides definitions, analyzes root causes, and discusses mitigation strategies for LLM reasoning shortcomings, offering a unified framework for understanding systematic weaknesses in LLM reasoning capabilities.",
+  "notes": null,
+  "private": false,
+  "added": "2026-03-14",
+  "pdf_filename": "song-2026-large-language-model-reasoning.pdf",
+  "url": null,
+  "arxiv_id": null,
+  "doi": null,
+  "import_source": "local",
+  "original_filename": "2602.06176v1.pdf",
+  "pdf_hash": "879c7ff8cbd2c5f9553a008b1a3e5c5e4dfa061c40e973c8b80302539dbdde9d",
+  "content_type": "pdf",
+  "versionable": false
+}

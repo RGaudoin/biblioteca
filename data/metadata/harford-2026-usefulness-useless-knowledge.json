@@ -1,0 +1,34 @@
+{
+  "id": "harford-2026-usefulness-useless-knowledge",
+  "title": "The usefulness of useless knowledge",
+  "authors": [
+    "Tim Harford"
+  ],
+  "year": 2026,
+  "source": "Financial Times",
+  "tags": [
+    "scientific-research",
+    "basic-science",
+    "innovation",
+    "funding",
+    "curiosity-driven-research",
+    "FT"
+  ],
+  "topics": [
+    "Scientific Research Funding and Policy",
+    "Innovation and Breakthrough Discovery"
+  ],
+  "summary": "This article argues that seemingly useless, curiosity-driven scientific research often yields unexpected practical applications, citing examples from number theory to the honey bee algorithm. The author contends that politicians are poorly positioned to judge research merit and that basic science funding is best directed by other scientists, while advocating for diverse funding mechanisms including innovation prizes and high-risk research grants.",
+  "notes": null,
+  "private": false,
+  "added": "2026-03-11",
+  "pdf_filename": "harford-2026-usefulness-useless-knowledge.pdf",
+  "url": null,
+  "arxiv_id": null,
+  "doi": null,
+  "import_source": "local",
+  "original_filename": "The usefulness of useless knowledge.pdf",
+  "pdf_hash": "0bd3222a761a60c2314836270e23eb904ddb174b585b387b8ac9949fee9c9dde",
+  "content_type": "pdf",
+  "versionable": false
+}

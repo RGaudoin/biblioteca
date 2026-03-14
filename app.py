@@ -400,7 +400,8 @@ def api_import_url():
 
     from importers import import_url
     private = data.get("private", False)
-    result = import_url(url, private=private)
+    use_ai = data.get("ai", False)
+    result = import_url(url, private=private, use_ai=use_ai)
 
     if result["success"]:
         return jsonify({"success": True, "paper_id": result["paper_id"],
@@ -432,10 +433,15 @@ def api_scan_batch():
     if not folder:
         return jsonify({"success": False, "error": "Folder path is required"}), 400
 
+    resolved = os.path.realpath(folder)
+    home = os.path.realpath(os.path.expanduser("~"))
+    if not resolved.startswith(home + os.sep) and resolved != home:
+        return jsonify({"success": False, "error": "Folder must be within home directory"}), 403
+
     recursive = data.get("recursive", False)
 
     from importers import scan_batch
-    results = scan_batch(folder, recursive=recursive)
+    results = scan_batch(resolved, recursive=recursive)
 
     return jsonify({"success": True, "files": results})
 
@@ -447,12 +453,17 @@ def api_import_batch():
     if not folder:
         return jsonify({"success": False, "error": "Folder path is required"}), 400
 
+    resolved = os.path.realpath(folder)
+    home = os.path.realpath(os.path.expanduser("~"))
+    if not resolved.startswith(home + os.sep) and resolved != home:
+        return jsonify({"success": False, "error": "Folder must be within home directory"}), 403
+
     from importers import import_batch
     use_ai = data.get("ai", False)
     recursive = data.get("recursive", False)
     paths = data.get("paths")  # Optional: only import specific files
     private = data.get("private", False)
-    results = import_batch(folder, use_ai=use_ai, recursive=recursive, paths=paths, private=private)
+    results = import_batch(resolved, use_ai=use_ai, recursive=recursive, paths=paths, private=private)
 
     return jsonify({
         "success": True,
@@ -463,49 +474,25 @@ def api_import_batch():
 
 
 @app.route("/api/import/links", methods=["POST"])
-def api_import_links():
-    """Import from a text block of URLs/arxiv IDs, one per line."""
+@app.route("/api/import/emails", methods=["POST"])
+def api_import_text():
+    """Import from a text block containing URLs, arxiv IDs, or email content."""
     data = request.json or {}
     text = data.get("text", "").strip()
     if not text:
         return jsonify({"success": False, "error": "Text is required"}), 400
 
-    # Write to temp file and use the links importer
-    import tempfile
-    from pathlib import Path
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as tmp:
-        tmp.write(text)
-        tmp_path = tmp.name
-
-    from importers import import_links_file
+    from importers import import_from_text
     private = data.get("private", False)
-    results = import_links_file(tmp_path, private=private)
-    Path(tmp_path).unlink(missing_ok=True)
+    use_ai = data.get("ai", False)
+    results = import_from_text(text, private=private, use_ai=use_ai)
 
     return jsonify({
         "success": True,
+        "urls_found": results.get("urls_found", []),
         "imported": results["imported"],
         "failed": results["failed"],
         "skipped": results.get("skipped", []),
-    })
-
-
-@app.route("/api/import/emails", methods=["POST"])
-def api_import_emails():
-    data = request.json or {}
-    text = data.get("text", "").strip()
-    if not text:
-        return jsonify({"success": False, "error": "Email text is required"}), 400
-
-    from importers import import_emails
-    private = data.get("private", False)
-    results = import_emails(text, private=private)
-
-    return jsonify({
-        "success": True,
-        "urls_found": results["urls_found"],
-        "imported": results["imported"],
-        "failed": results["failed"],
     })
 
 
@@ -517,12 +504,17 @@ def api_import_reading_list():
     if not path:
         return jsonify({"success": False, "error": "File path is required"}), 400
 
+    resolved = os.path.realpath(path)
+    home = os.path.realpath(os.path.expanduser("~"))
+    if not resolved.startswith(home + os.sep) and resolved != home:
+        return jsonify({"success": False, "error": "File must be within home directory"}), 403
+
     config = load_config()
     if not get_api_key(config):
         return jsonify({"success": False, "error": "No API key configured (needed for AI parsing)"}), 400
 
     from importers import import_reading_list
-    result = import_reading_list(path)
+    result = import_reading_list(resolved)
 
     if result["success"]:
         return jsonify({
@@ -668,12 +660,12 @@ def api_ai_bulk_extract():
             if extracted.get(field) and not paper.get(field):
                 paper[field] = extracted[field]
                 updated = True
-                if field == "summary" and extracted.get("summary_model"):
-                    paper["summary_model"] = extracted["summary_model"]
-        # Backfill: paper has summary but no model recorded
-        if not paper.get("summary_model") and paper.get("summary") and extracted.get("summary_model"):
-            paper["summary_model"] = extracted["summary_model"]
-            updated = True
+
+        # Record models used
+        for model_field in ["summary_model", "extraction_model"]:
+            if extracted.get(model_field) and not paper.get(model_field):
+                paper[model_field] = extracted[model_field]
+                updated = True
 
         if updated:
             save_paper(paper)
@@ -689,25 +681,54 @@ def api_ai_bulk_extract():
     })
 
 
+def extract_metadata_from_url(url, config):
+    """Fetch a URL's content and extract metadata from it."""
+    import tempfile
+    from importers import _fetch_page_metadata, _html_to_markdown
+    from ai import extract_metadata
+
+    page = _fetch_page_metadata(url)
+    if not page.get("html"):
+        return {}
+
+    md = _html_to_markdown(page["html"])
+    if len(md) < 50:
+        return {}
+
+    # Write markdown to a temp file for extract_metadata
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False, encoding="utf-8") as tmp:
+        tmp.write(md)
+        tmp_path = tmp.name
+
+    try:
+        extracted = extract_metadata(tmp_path, config)
+    finally:
+        Path(tmp_path).unlink(missing_ok=True)
+
+    return extracted
+
+
 @app.route("/api/ai/extract/<paper_id>", methods=["POST"])
 def api_ai_extract(paper_id):
     paper = load_paper(paper_id)
     if paper is None:
         return jsonify({"error": "Paper not found"}), 404
 
-    if not paper.get("pdf_filename"):
-        return jsonify({"success": False, "error": "Paper has no file"}), 400
-
-    pdf_path = resolve_file_path(paper)
-    if not pdf_path:
-        return jsonify({"success": False, "error": "File not found on disk"}), 400
-
     config = load_config()
     if not get_api_key(config):
         return jsonify({"success": False, "error": "No API key configured"}), 400
 
+    # Try local file first, then fall back to fetching URL content
+    pdf_path = resolve_file_path(paper) if paper.get("pdf_filename") else None
+
     from ai import extract_metadata
-    extracted = extract_metadata(str(pdf_path), config)
+    if pdf_path:
+        extracted = extract_metadata(str(pdf_path), config)
+    elif paper.get("url"):
+        # No local file — fetch the URL and extract from the page content
+        extracted = extract_metadata_from_url(paper["url"], config)
+    else:
+        return jsonify({"success": False, "error": "Paper has no file or URL to extract from"}), 400
 
     if not extracted:
         return jsonify({"success": False, "error": "Could not extract metadata"}), 400
@@ -718,11 +739,13 @@ def api_ai_extract(paper_id):
         if extracted.get(field) and not paper.get(field):
             paper[field] = extracted[field]
             updated = True
-            if field == "summary" and extracted.get("summary_model"):
-                paper["summary_model"] = extracted["summary_model"]
-    # Backfill: paper has summary but no model recorded
-    if not paper.get("summary_model") and paper.get("summary") and extracted.get("summary_model"):
+
+    # Record models used
+    if extracted.get("summary_model") and not paper.get("summary_model"):
         paper["summary_model"] = extracted["summary_model"]
+        updated = True
+    if extracted.get("extraction_model") and not paper.get("extraction_model"):
+        paper["extraction_model"] = extracted["extraction_model"]
         updated = True
 
     if updated:
@@ -763,6 +786,36 @@ def api_ai_summarise(paper_id):
     save_paper(paper)
 
     return jsonify({"success": True, "paper": paper, "summary": result["summary"]})
+
+
+@app.route("/api/ai/suggest-tags/<paper_id>", methods=["POST"])
+def api_ai_suggest_tags(paper_id):
+    """Generate tag suggestions for a paper (does not auto-save)."""
+    paper = load_paper(paper_id)
+    if paper is None:
+        return jsonify({"error": "Paper not found"}), 404
+
+    config = load_config()
+    if not get_api_key(config):
+        return jsonify({"success": False, "error": "No API key configured"}), 400
+
+    # Find content to analyse
+    pdf_path = resolve_file_path(paper) if paper.get("pdf_filename") else None
+    if not pdf_path:
+        return jsonify({"success": False, "error": "Paper has no file to analyse"}), 400
+
+    from ai import suggest_tags
+    result = suggest_tags(str(pdf_path), existing_tags=paper.get("tags", []), config=config)
+
+    if not result or not result.get("tags"):
+        return jsonify({"success": False, "error": "Could not generate tag suggestions"}), 400
+
+    return jsonify({
+        "success": True,
+        "current_tags": paper.get("tags", []),
+        "suggested_tags": result["tags"],
+        "model": result["model"],
+    })
 
 
 @app.route("/api/ai/suggest-tag-merges", methods=["POST"])
@@ -956,4 +1009,4 @@ def api_serve_file(filename):
 # --- Main ---
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5001)
+    app.run(debug=False, port=5001)
