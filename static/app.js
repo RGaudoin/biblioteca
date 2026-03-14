@@ -1038,8 +1038,9 @@ async function openTopic(topicId, topicName) {
         }
         html += '</div>';
 
-        html += `<div style="margin:0.75rem 0">
+        html += `<div style="margin:0.75rem 0;display:flex;gap:0.5rem">
             <button onclick="showAddPaperToTopic('${esc(topicId)}', '${esc(topic.name)}')">Add Papers</button>
+            <button onclick="findPapersForTopic('${esc(topicId)}', '${esc(topic.name)}', '${esc(topic.description || '')}')">Find Papers (AI)</button>
         </div>`;
 
         html += `<div class="modal-actions">
@@ -1219,6 +1220,213 @@ async function deleteSingleTopic(topic) {
             body: JSON.stringify({ topic })
         });
         refreshTopicManagement();
+    } catch (err) { alert('Error: ' + err.message); }
+}
+
+
+// --- Topic Suggestion from Topics tab ---
+
+async function startTopicSuggestion() {
+    // Show paper selection UI in the topics list area
+    const resp = await fetch('/api/papers?limit=500');
+    const data = await resp.json();
+    const papers = data.papers;
+
+    if (papers.length === 0) {
+        alert('No papers in the library.');
+        return;
+    }
+
+    const container = document.getElementById('topics-list');
+    let html = `<div style="padding:0.5rem 0">
+        <p>Select papers to suggest topics for, then click "Suggest".</p>
+        <div style="margin:0.5rem 0;display:flex;gap:0.5rem;align-items:center">
+            <button onclick="runTopicSuggestion()">Suggest Topics (AI)</button>
+            <button onclick="refreshTopicManagement()">Cancel</button>
+            <label><input type="checkbox" id="topic-suggest-fulltext"> Use full text</label>
+            <span id="topic-suggest-status" class="paper-meta"></span>
+        </div>
+    </div>`;
+
+    for (const p of papers) {
+        const title = paperDisplayTitle(p);
+        html += `<div class="paper-card" style="padding:0.4rem 0.75rem">
+            <label style="display:flex;align-items:center;gap:0.75rem;cursor:pointer;font-weight:normal">
+                <input type="checkbox" class="topic-suggest-paper-cb" data-paper-id="${esc(p.id)}">
+                <span>${esc(title)}</span>
+                <span class="paper-meta">${esc((p.authors || []).join(', '))}${p.year ? ' (' + p.year + ')' : ''}${p.source ? ' · ' + esc(p.source) : ''}</span>
+            </label>
+        </div>`;
+    }
+    container.innerHTML = html;
+}
+
+async function runTopicSuggestion() {
+    const checked = Array.from(document.querySelectorAll('.topic-suggest-paper-cb:checked'));
+    if (checked.length === 0) return alert('Select at least one paper.');
+
+    const paperIds = checked.map(cb => cb.dataset.paperId);
+    const statusEl = document.getElementById('topic-suggest-status');
+    statusEl.textContent = 'Analysing...';
+
+    try {
+        const resp = await fetch('/api/ai/suggest-unifying-topic', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ paper_ids: paperIds })
+        });
+        const data = await resp.json();
+        if (!data.success) {
+            statusEl.textContent = '';
+            alert('Error: ' + (data.error || 'Unknown'));
+            return;
+        }
+        if (!data.suggestions || data.suggestions.length === 0) {
+            statusEl.textContent = '';
+            alert('No topic suggestions generated.');
+            return;
+        }
+        // Show suggestions with checkboxes + editable names
+        showTopicSuggestionResults(data.suggestions, paperIds);
+    } catch (err) {
+        statusEl.textContent = '';
+        alert('Error: ' + err.message);
+    }
+}
+
+function showTopicSuggestionResults(suggestions, paperIds) {
+    const container = document.getElementById('topics-list');
+    let html = `<div style="padding:0.5rem 0">
+        <h3>Suggested topics for ${paperIds.length} paper(s)</h3>
+        <div style="margin:0.5rem 0;display:flex;gap:0.5rem">
+            <button onclick="applyTopicSuggestionResults()">Assign Selected</button>
+            <button onclick="refreshTopicManagement()">Cancel</button>
+        </div>
+    </div>`;
+
+    for (let i = 0; i < suggestions.length; i++) {
+        const s = suggestions[i];
+        const badge = s.existing
+            ? '<span class="paper-meta">(existing)</span>'
+            : '<span class="paper-meta">(new)</span>';
+        html += `<div class="paper-card" style="padding:0.5rem 0.75rem">
+            <label style="display:flex;align-items:baseline;gap:0.5rem;cursor:pointer;font-weight:normal">
+                <input type="checkbox" class="topic-suggest-result-cb" data-index="${i}" checked>
+                <span>
+                    <strong>${esc(s.name)}</strong> ${badge}
+                    ${s.description ? `<br><span class="paper-meta">${esc(s.description)}</span>` : ''}
+                </span>
+            </label>
+        </div>`;
+    }
+    container.innerHTML = html;
+    container._topicSuggestData = { suggestions, paperIds };
+}
+
+async function applyTopicSuggestionResults() {
+    const container = document.getElementById('topics-list');
+    const { suggestions, paperIds } = container._topicSuggestData || {};
+    if (!suggestions) return;
+
+    const checked = Array.from(document.querySelectorAll('.topic-suggest-result-cb:checked'));
+    if (checked.length === 0) return alert('Select at least one topic.');
+
+    for (const cb of checked) {
+        const s = suggestions[parseInt(cb.dataset.index)];
+        const assignResp = await fetch('/api/papers/assign-topic', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ topic: s.name, paper_ids: paperIds })
+        });
+        const assignData = await assignResp.json();
+        if (assignData.success && !s.existing && s.description && assignData.topic) {
+            await fetch(`/api/topics/${assignData.topic.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ description: s.description })
+            });
+        }
+    }
+    alert(`Assigned ${checked.length} topic(s) to ${paperIds.length} paper(s).`);
+    refreshTopicManagement();
+}
+
+
+// --- Find Papers for Topic ---
+
+async function findPapersForTopic(topicId, topicName, topicDescription) {
+    const detail = document.getElementById('topic-detail');
+    const btn = event.target;
+    btn.textContent = 'Searching...';
+    btn.disabled = true;
+
+    try {
+        const resp = await fetch('/api/ai/find-papers-for-topic', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ topic_name: topicName, topic_description: topicDescription || '' })
+        });
+        const data = await resp.json();
+        if (!data.success) {
+            alert('Error: ' + (data.error || 'Unknown'));
+            btn.textContent = 'Find Papers (AI)';
+            btn.disabled = false;
+            return;
+        }
+
+        const paperIds = data.paper_ids || [];
+        if (paperIds.length === 0) {
+            alert(data.message || 'No additional papers found for this topic.');
+            btn.textContent = 'Find Papers (AI)';
+            btn.disabled = false;
+            return;
+        }
+
+        // Fetch paper details for display
+        const allResp = await fetch('/api/papers?limit=500');
+        const allData = await allResp.json();
+        const matched = allData.papers.filter(p => paperIds.includes(p.id));
+
+        let html = `<h3>Papers suggested for "${esc(topicName)}" (${matched.length})</h3>`;
+        html += `<div style="margin:0.5rem 0;display:flex;gap:0.5rem">
+            <button onclick="addFoundPapersToTopic('${esc(topicId)}', '${esc(topicName)}')">Add Selected</button>
+            <button onclick="openTopic('${esc(topicId)}', '${esc(topicName)}')">Cancel</button>
+        </div>`;
+
+        for (const p of matched) {
+            const title = paperDisplayTitle(p);
+            html += `<div class="paper-card" style="padding:0.4rem 0.75rem">
+                <label style="display:flex;align-items:center;gap:0.75rem;cursor:pointer;font-weight:normal">
+                    <input type="checkbox" class="find-topic-paper-cb" data-paper-id="${esc(p.id)}" checked>
+                    <span>${esc(title)}</span>
+                    <span class="paper-meta">${esc((p.authors || []).join(', '))}${p.year ? ' (' + p.year + ')' : ''}</span>
+                </label>
+            </div>`;
+        }
+        detail.innerHTML = html;
+    } catch (err) {
+        alert('Error: ' + err.message);
+        btn.textContent = 'Find Papers (AI)';
+        btn.disabled = false;
+    }
+}
+
+async function addFoundPapersToTopic(topicId, topicName) {
+    const checked = Array.from(document.querySelectorAll('.find-topic-paper-cb:checked'));
+    if (checked.length === 0) return alert('Select at least one paper.');
+
+    const paperIds = checked.map(cb => cb.dataset.paperId);
+    try {
+        const resp = await fetch(`/api/topics/${topicId}/add-papers`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ paper_ids: paperIds })
+        });
+        const data = await resp.json();
+        if (data.success) {
+            alert(`Added ${data.added.length} paper(s) to "${topicName}".`);
+            openTopic(topicId, topicName);
+        }
     } catch (err) { alert('Error: ' + err.message); }
 }
 
