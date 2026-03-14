@@ -460,7 +460,9 @@ def _import_github_ref(url, private=False):
 
 def _import_generic_url(url, private=False):
     """Store a generic URL as a reference."""
-    paper_id = generate_id(fallback=url.split("/")[-1] or "web-reference")
+    from urllib.parse import urlparse
+    path_part = urlparse(url).path.rstrip("/").split("/")[-1] or "web-reference"
+    paper_id = generate_id(fallback=path_part)
     metadata = create_paper_stub(
         paper_id,
         pdf_filename=None,
