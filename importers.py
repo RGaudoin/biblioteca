@@ -474,50 +474,39 @@ def _clean_url(url):
 
 def _fetch_page_metadata(url):
     """Fetch a web page and extract metadata and article content."""
-    import html as html_mod
+    from bs4 import BeautifulSoup
 
     result = {"title": None, "author": None, "date": None, "description": None,
               "source": None, "html": None}
     try:
         resp = requests.get(url, timeout=15, headers={"User-Agent": "Biblioteca/1.0"})
         resp.raise_for_status()
-        text = resp.text
-        result["html"] = text
+        result["html"] = resp.text
     except Exception:
         return result
 
-    def meta_content(prop_or_name):
-        """Extract content from a meta tag by property or name."""
-        for attr in ("property", "name"):
-            m = re.search(
-                rf'<meta[^>]+{attr}=["\'](?:{prop_or_name})["\'][^>]+content=["\']([^"\']+)["\']',
-                text, re.IGNORECASE)
-            if m:
-                return html_mod.unescape(m.group(1).strip())
-        # Also try content before property/name
-        for attr in ("property", "name"):
-            m = re.search(
-                rf'<meta[^>]+content=["\']([^"\']+)["\'][^>]+{attr}=["\'](?:{prop_or_name})["\']',
-                text, re.IGNORECASE)
-            if m:
-                return html_mod.unescape(m.group(1).strip())
+    soup = BeautifulSoup(resp.text, "html.parser")
+
+    def meta(names):
+        """Find first matching meta tag content by property or name."""
+        for name in names:
+            tag = soup.find("meta", attrs={"property": name})
+            if not tag:
+                tag = soup.find("meta", attrs={"name": name})
+            if tag and tag.get("content"):
+                return tag["content"].strip()
         return None
 
-    result["title"] = meta_content("og:title") or None
-    if not result["title"]:
-        m = re.search(r'<title[^>]*>([^<]+)</title>', text, re.IGNORECASE)
-        if m:
-            result["title"] = html_mod.unescape(m.group(1).strip())
+    result["title"] = meta(["og:title"]) or (soup.title.string.strip() if soup.title and soup.title.string else None)
 
-    author = meta_content("author|article:author|og:article:author")
+    author = meta(["author", "article:author", "og:article:author"])
     if author and not author.startswith("http"):
         result["author"] = author
-    result["description"] = meta_content("og:description|description")
-    result["source"] = meta_content("og:site_name")
+    result["description"] = meta(["og:description", "description"])
+    result["source"] = meta(["og:site_name"])
 
-    date_str = meta_content("article:published_time|date|publish_date")
+    date_str = meta(["article:published_time", "date", "publish_date"])
     if date_str:
-        # Try to extract just the date part (YYYY-MM-DD)
         dm = re.match(r"(\d{4}-\d{2}-\d{2})", date_str)
         result["date"] = dm.group(1) if dm else date_str
 
@@ -525,41 +514,32 @@ def _fetch_page_metadata(url):
 
 
 def _html_to_markdown(html_text):
-    """Extract article text from HTML and convert to simple markdown."""
-    import html as html_mod
+    """Extract article text from HTML and convert to markdown."""
+    from bs4 import BeautifulSoup
+    import html2text
 
-    # Try to find article content
-    article = re.search(r'<article[^>]*>(.*?)</article>', html_text, re.DOTALL | re.IGNORECASE)
-    content = article.group(1) if article else html_text
+    soup = BeautifulSoup(html_text, "html.parser")
 
-    # Remove script, style, nav, header, footer, aside tags
-    for tag in ('script', 'style', 'nav', 'header', 'footer', 'aside', 'iframe', 'noscript'):
-        content = re.sub(rf'<{tag}[^>]*>.*?</{tag}>', '', content, flags=re.DOTALL | re.IGNORECASE)
+    # Remove non-content elements
+    for tag in soup.find_all(["script", "style", "nav", "header", "footer",
+                              "aside", "iframe", "noscript", "form"]):
+        tag.decompose()
 
-    # Convert common HTML to markdown
-    content = re.sub(r'<h1[^>]*>(.*?)</h1>', r'# \1\n\n', content, flags=re.DOTALL | re.IGNORECASE)
-    content = re.sub(r'<h2[^>]*>(.*?)</h2>', r'## \1\n\n', content, flags=re.DOTALL | re.IGNORECASE)
-    content = re.sub(r'<h3[^>]*>(.*?)</h3>', r'### \1\n\n', content, flags=re.DOTALL | re.IGNORECASE)
-    content = re.sub(r'<strong[^>]*>(.*?)</strong>', r'**\1**', content, flags=re.DOTALL | re.IGNORECASE)
-    content = re.sub(r'<b[^>]*>(.*?)</b>', r'**\1**', content, flags=re.DOTALL | re.IGNORECASE)
-    content = re.sub(r'<em[^>]*>(.*?)</em>', r'*\1*', content, flags=re.DOTALL | re.IGNORECASE)
-    content = re.sub(r'<i[^>]*>(.*?)</i>', r'*\1*', content, flags=re.DOTALL | re.IGNORECASE)
-    content = re.sub(r'<li[^>]*>(.*?)</li>', r'- \1\n', content, flags=re.DOTALL | re.IGNORECASE)
-    content = re.sub(r'<br\s*/?>', '\n', content, flags=re.IGNORECASE)
-    content = re.sub(r'<p[^>]*>(.*?)</p>', r'\1\n\n', content, flags=re.DOTALL | re.IGNORECASE)
+    # Prefer <article> content if present
+    article = soup.find("article")
+    content_html = str(article) if article else str(soup.body or soup)
 
-    # Strip remaining HTML tags
-    content = re.sub(r'<[^>]+>', '', content)
-    # Unescape HTML entities
-    content = html_mod.unescape(content)
-    # Collapse whitespace within lines, preserve paragraph breaks
-    lines = content.split('\n')
-    lines = [' '.join(line.split()) for line in lines]
-    content = '\n'.join(lines)
-    # Collapse multiple blank lines
-    content = re.sub(r'\n{3,}', '\n\n', content).strip()
+    h = html2text.HTML2Text()
+    h.ignore_links = False
+    h.ignore_images = True
+    h.body_width = 0  # No line wrapping
+    h.skip_internal_links = True
 
-    return content
+    md = h.handle(content_html)
+
+    # Collapse excessive blank lines
+    md = re.sub(r'\n{3,}', '\n\n', md).strip()
+    return md
 
 
 def _import_generic_url(url, private=False):
