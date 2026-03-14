@@ -790,7 +790,7 @@ def api_ai_summarise(paper_id):
 
 @app.route("/api/ai/suggest-tags/<paper_id>", methods=["POST"])
 def api_ai_suggest_tags(paper_id):
-    """Generate new tag suggestions for a paper."""
+    """Generate tag suggestions for a paper (does not auto-save)."""
     paper = load_paper(paper_id)
     if paper is None:
         return jsonify({"error": "Paper not found"}), 404
@@ -810,12 +810,12 @@ def api_ai_suggest_tags(paper_id):
     if not result or not result.get("tags"):
         return jsonify({"success": False, "error": "Could not generate tag suggestions"}), 400
 
-    # Replace tags and record model
-    paper["tags"] = result["tags"]
-    paper["extraction_model"] = result["model"]
-    save_paper(paper)
-
-    return jsonify({"success": True, "paper": paper, "tags": result["tags"]})
+    return jsonify({
+        "success": True,
+        "current_tags": paper.get("tags", []),
+        "suggested_tags": result["tags"],
+        "model": result["model"],
+    })
 
 
 @app.route("/api/ai/suggest-tag-merges", methods=["POST"])

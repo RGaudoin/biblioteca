@@ -313,15 +313,81 @@ async function summarisePaper(paperId) {
 }
 
 async function retagPaper(paperId) {
-    showModalLoading('Generating tags...');
+    showModalLoading('Generating tag suggestions...');
     try {
         const resp = await fetch(`/api/ai/suggest-tags/${paperId}`, { method: 'POST' });
         const data = await resp.json();
+        if (!data.success) {
+            alert('Tag generation failed: ' + (data.error || 'Unknown error'));
+            openPaper(paperId);
+            return;
+        }
+
+        const current = data.current_tags || [];
+        const suggested = data.suggested_tags || [];
+        // Find genuinely new suggestions (not already in current)
+        const newTags = suggested.filter(t => !current.includes(t));
+
+        let html = `<p style="opacity:0.6;font-size:0.85em">Model: ${esc(data.model)}</p>`;
+
+        if (current.length) {
+            html += '<h4>Current tags</h4>';
+            current.forEach(t => {
+                html += `<label style="display:block;margin:0.25rem 0">
+                    <input type="checkbox" class="retag-current" value="${esc(t)}" checked> ${esc(t)}
+                </label>`;
+            });
+        }
+
+        if (newTags.length) {
+            html += '<h4>Suggested new tags</h4>';
+            newTags.forEach(t => {
+                html += `<label style="display:flex;align-items:center;gap:0.5rem;margin:0.25rem 0">
+                    <input type="checkbox" class="retag-suggested" checked>
+                    <input type="text" class="retag-suggested-text" value="${esc(t)}" style="flex:1;padding:0.2rem 0.4rem">
+                </label>`;
+            });
+        } else {
+            html += '<p><em>No new tags suggested beyond current ones.</em></p>';
+        }
+
+        html += `<div style="margin-top:1rem;display:flex;gap:0.5rem">
+            <button onclick="applyRetag('${esc(paperId)}')">Apply</button>
+            <button onclick="openPaper('${esc(paperId)}')">Cancel</button>
+        </div>`;
+
+        document.getElementById('modal-body').innerHTML = html;
+    } catch (err) {
+        alert('Error: ' + err.message);
+        openPaper(paperId);
+    }
+}
+
+async function applyRetag(paperId) {
+    // Collect kept current tags
+    const tags = [];
+    document.querySelectorAll('.retag-current:checked').forEach(cb => {
+        tags.push(cb.value);
+    });
+    // Collect accepted new tags (with edited values)
+    document.querySelectorAll('.retag-suggested:checked').forEach(cb => {
+        const textInput = cb.closest('label').querySelector('.retag-suggested-text');
+        const val = textInput.value.trim();
+        if (val && !tags.includes(val)) tags.push(val);
+    });
+
+    try {
+        const resp = await fetch(`/api/papers/${paperId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tags })
+        });
+        const data = await resp.json();
         if (data.success) {
-            renderPaperModal(data.paper);
+            openPaper(paperId);
             refreshLibrary();
         } else {
-            alert('Tag generation failed: ' + (data.error || 'Unknown error'));
+            alert('Error saving tags: ' + (data.error || 'Unknown'));
         }
     } catch (err) {
         alert('Error: ' + err.message);
