@@ -203,6 +203,10 @@ async function openPaper(paperId) {
     try {
         const resp = await fetch(`/api/papers/${paperId}`);
         const paper = await resp.json();
+        if (paper.error) {
+            alert('Error loading paper: ' + paper.error);
+            return;
+        }
         renderPaperModal(paper);
         document.getElementById('paper-modal').classList.add('active');
     } catch (err) {
