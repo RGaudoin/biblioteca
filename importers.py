@@ -282,7 +282,8 @@ def import_arxiv(arxiv_input, private=False):
         pdf_hash=compute_hash(str(dest)),
     )
 
-    return {"success": True, "paper_id": paper_id, "metadata": metadata}
+    return {"success": True, "paper_id": paper_id, "metadata": metadata,
+            "note": "Metadata from arXiv API (author abstract, category tag only). Use Re-tag and Re-summarise for richer results."}
 
 
 # --- URL import ---
