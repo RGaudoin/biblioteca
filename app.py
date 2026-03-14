@@ -474,49 +474,25 @@ def api_import_batch():
 
 
 @app.route("/api/import/links", methods=["POST"])
-def api_import_links():
-    """Import from a text block of URLs/arxiv IDs, one per line."""
+@app.route("/api/import/emails", methods=["POST"])
+def api_import_text():
+    """Import from a text block containing URLs, arxiv IDs, or email content."""
     data = request.json or {}
     text = data.get("text", "").strip()
     if not text:
         return jsonify({"success": False, "error": "Text is required"}), 400
 
-    # Write to temp file and use the links importer
-    import tempfile
-    from pathlib import Path
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as tmp:
-        tmp.write(text)
-        tmp_path = tmp.name
-
-    from importers import import_links_file
+    from importers import import_from_text
     private = data.get("private", False)
-    results = import_links_file(tmp_path, private=private)
-    Path(tmp_path).unlink(missing_ok=True)
+    use_ai = data.get("ai", False)
+    results = import_from_text(text, private=private, use_ai=use_ai)
 
     return jsonify({
         "success": True,
+        "urls_found": results.get("urls_found", []),
         "imported": results["imported"],
         "failed": results["failed"],
         "skipped": results.get("skipped", []),
-    })
-
-
-@app.route("/api/import/emails", methods=["POST"])
-def api_import_emails():
-    data = request.json or {}
-    text = data.get("text", "").strip()
-    if not text:
-        return jsonify({"success": False, "error": "Email text is required"}), 400
-
-    from importers import import_emails
-    private = data.get("private", False)
-    results = import_emails(text, private=private)
-
-    return jsonify({
-        "success": True,
-        "urls_found": results["urls_found"],
-        "imported": results["imported"],
-        "failed": results["failed"],
     })
 
 

@@ -687,16 +687,17 @@ async function handleBatchImportAll() {
 async function handleLinksImport(e) {
     e.preventDefault();
     const text = document.getElementById('links-text').value.trim();
-    showResult('links-result', 'info', 'Importing links...');
+    showResult('links-result', 'info', 'Importing...');
 
     try {
         const resp = await fetch('/api/import/links', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text, private: document.getElementById('import-private').checked })
+            body: JSON.stringify({ text, private: document.getElementById('import-private').checked, ai: document.getElementById('links-ai').checked })
         });
         const data = await resp.json();
         let msg = '';
+        if (data.urls_found && data.urls_found.length) msg += `URLs found: ${data.urls_found.length}\n`;
         if (data.imported && data.imported.length) msg += `Imported (${data.imported.length}):\n` + data.imported.map(i => `  ${i.paper_id} (${i.line})`).join('\n') + '\n';
         if (data.skipped && data.skipped.length) msg += `\nSkipped (${data.skipped.length}):\n` + data.skipped.map(s => `  ${s.line}: ${s.reason}`).join('\n') + '\n';
         if (data.failed && data.failed.length) msg += `\nFailed (${data.failed.length}):\n` + data.failed.map(f => `  ${f.line}: ${f.error}`).join('\n');
@@ -736,28 +737,6 @@ async function handleReadingListImport(e) {
     }
 }
 
-async function handleEmailImport(e) {
-    e.preventDefault();
-    const text = document.getElementById('email-text').value.trim();
-    showResult('email-result', 'info', 'Parsing and importing...');
-
-    try {
-        const resp = await fetch('/api/import/emails', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text, private: document.getElementById('import-private').checked })
-        });
-        const data = await resp.json();
-        let msg = `URLs found: ${data.urls_found.length}\n`;
-        data.urls_found.forEach(u => msg += `  ${u}\n`);
-        if (data.imported.length) msg += `\nImported (${data.imported.length}):\n` + data.imported.map(i => `  ${i.paper_id} (${i.url})`).join('\n') + '\n';
-        if (data.failed.length) msg += `\nFailed (${data.failed.length}):\n` + data.failed.map(f => `  ${f.url}: ${f.error}`).join('\n');
-        showResult('email-result', data.failed.length ? 'error' : 'success', msg);
-        refreshLibrary();
-    } catch (err) {
-        showResult('email-result', 'error', `Error: ${err.message}`);
-    }
-}
 
 
 // --- Collections ---
@@ -1820,7 +1799,7 @@ function formatMeta(paper) {
 function updateAiLabels() {
     const model = appConfig.extraction_model || 'haiku';
     const short = model.replace(/^claude-/, '').replace(/-\d{8}$/, '');
-    for (const id of ['upload-ai', 'url-ai', 'batch-ai']) {
+    for (const id of ['upload-ai', 'url-ai', 'batch-ai', 'links-ai']) {
         const el = document.getElementById(id);
         if (el && el.parentElement) {
             el.parentElement.childNodes[1].textContent = ` Use AI for metadata extraction (${short})`;

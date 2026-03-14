@@ -713,15 +713,20 @@ def extract_urls_from_text(text):
     return cleaned
 
 
-def import_emails(text_or_path, private=False):
-    """Parse email text (or file path) to extract URLs and import each.
+def import_from_text(text_or_path, private=False, use_ai=False):
+    """Import papers from text containing URLs or arxiv IDs.
+
+    Accepts either raw text (e.g. pasted email, list of links) or a file path.
+    Extracts URLs from unstructured text and also recognises bare arxiv IDs
+    on their own lines. Lines starting with # are treated as comments.
 
     Args:
-        text_or_path: Either raw email text or path to a text file.
+        text_or_path: Raw text or path to a text file.
         private: If True, mark all imported papers as private.
+        use_ai: If True, run AI metadata extraction on imported papers.
 
     Returns:
-        dict with 'urls_found', 'imported', 'failed' lists.
+        dict with 'urls_found', 'imported', 'failed', 'skipped' lists.
     """
     # If it looks like a file path, read it
     path = Path(text_or_path)
@@ -731,68 +736,50 @@ def import_emails(text_or_path, private=False):
     else:
         text = text_or_path
 
+    # Extract URLs from the text
     urls = extract_urls_from_text(text)
 
-    results = {"urls_found": urls, "imported": [], "failed": []}
-
-    for url in urls:
-        # Skip Yahoo Mail boilerplate URLs
-        if "yahoo.com" in url and "mail" in url.lower():
-            continue
-
-        result = import_url(url, private=private)
-        if result["success"]:
-            results["imported"].append({"url": url, "paper_id": result["paper_id"], "note": result.get("note")})
-        else:
-            results["failed"].append({"url": url, "error": result["error"]})
-
-    return results
-
-
-# --- Link file import ---
-
-def import_links_file(file_path, private=False):
-    """Import papers from a text file containing URLs or arxiv IDs, one per line.
-
-    Lines starting with # are treated as comments. Blank lines are skipped.
-
-    Args:
-        file_path: Path to text file.
-        private: If True, mark all imported papers as private.
-
-    Returns:
-        dict with 'imported', 'failed', 'skipped' lists.
-    """
-    path = Path(file_path)
-    if not path.exists():
-        return {"imported": [], "failed": [{"line": file_path, "error": "File not found"}], "skipped": []}
-
-    with open(path, "r", encoding="utf-8") as f:
-        lines = f.readlines()
-
-    results = {"imported": [], "failed": [], "skipped": []}
-
-    for line in lines:
+    # Also check for bare arxiv IDs on their own lines
+    arxiv_ids = []
+    for line in text.splitlines():
         line = line.strip()
         if not line or line.startswith("#"):
             continue
-
-        # Detect arxiv ID (bare, no URL)
         arxiv_match = ARXIV_ID_PATTERN.match(line)
         if arxiv_match and "://" not in line:
-            result = import_arxiv(line, private=private)
-        elif "://" in line:
-            result = import_url(line, private=private)
-        else:
-            results["skipped"].append({"line": line, "reason": "Not a recognised URL or arxiv ID"})
+            arxiv_ids.append(line)
+
+    results = {"urls_found": urls, "imported": [], "failed": [], "skipped": []}
+
+    # Import URLs
+    for url in urls:
+        # Skip mail boilerplate URLs
+        if any(skip in url for skip in ["yahoo.com/mail", "mail.google.com/mail"]):
             continue
 
+        result = import_url(url, private=private, use_ai=use_ai)
         if result["success"]:
-            results["imported"].append({"line": line, "paper_id": result["paper_id"], "note": result.get("note")})
+            results["imported"].append({"line": url, "paper_id": result["paper_id"], "note": result.get("note")})
         else:
-            results["failed"].append({"line": line, "error": result["error"]})
+            results["failed"].append({"line": url, "error": result["error"]})
+
+    # Import bare arxiv IDs
+    for arxiv_id in arxiv_ids:
+        result = import_arxiv(arxiv_id, private=private)
+        if result["success"]:
+            results["imported"].append({"line": arxiv_id, "paper_id": result["paper_id"], "note": result.get("note")})
+        else:
+            results["failed"].append({"line": arxiv_id, "error": result["error"]})
 
     return results
+
+
+# Backwards compatibility
+def import_emails(text_or_path, private=False):
+    return import_from_text(text_or_path, private=private)
+
+def import_links_file(file_path, private=False):
+    return import_from_text(file_path, private=private)
 
 
 # --- Reading list import ---
