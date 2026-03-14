@@ -432,10 +432,15 @@ def api_scan_batch():
     if not folder:
         return jsonify({"success": False, "error": "Folder path is required"}), 400
 
+    resolved = os.path.realpath(folder)
+    home = os.path.realpath(os.path.expanduser("~"))
+    if not resolved.startswith(home + os.sep) and resolved != home:
+        return jsonify({"success": False, "error": "Folder must be within home directory"}), 403
+
     recursive = data.get("recursive", False)
 
     from importers import scan_batch
-    results = scan_batch(folder, recursive=recursive)
+    results = scan_batch(resolved, recursive=recursive)
 
     return jsonify({"success": True, "files": results})
 
@@ -447,12 +452,17 @@ def api_import_batch():
     if not folder:
         return jsonify({"success": False, "error": "Folder path is required"}), 400
 
+    resolved = os.path.realpath(folder)
+    home = os.path.realpath(os.path.expanduser("~"))
+    if not resolved.startswith(home + os.sep) and resolved != home:
+        return jsonify({"success": False, "error": "Folder must be within home directory"}), 403
+
     from importers import import_batch
     use_ai = data.get("ai", False)
     recursive = data.get("recursive", False)
     paths = data.get("paths")  # Optional: only import specific files
     private = data.get("private", False)
-    results = import_batch(folder, use_ai=use_ai, recursive=recursive, paths=paths, private=private)
+    results = import_batch(resolved, use_ai=use_ai, recursive=recursive, paths=paths, private=private)
 
     return jsonify({
         "success": True,
@@ -517,12 +527,17 @@ def api_import_reading_list():
     if not path:
         return jsonify({"success": False, "error": "File path is required"}), 400
 
+    resolved = os.path.realpath(path)
+    home = os.path.realpath(os.path.expanduser("~"))
+    if not resolved.startswith(home + os.sep) and resolved != home:
+        return jsonify({"success": False, "error": "File must be within home directory"}), 403
+
     config = load_config()
     if not get_api_key(config):
         return jsonify({"success": False, "error": "No API key configured (needed for AI parsing)"}), 400
 
     from importers import import_reading_list
-    result = import_reading_list(path)
+    result = import_reading_list(resolved)
 
     if result["success"]:
         return jsonify({
@@ -956,4 +971,4 @@ def api_serve_file(filename):
 # --- Main ---
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5001)
+    app.run(debug=False, port=5001)
