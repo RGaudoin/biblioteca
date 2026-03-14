@@ -229,6 +229,7 @@ function renderPaperModal(p) {
         { label: 'Type', value: p.content_type ? `${p.content_type}${p.versionable ? ' (versioned)' : ''}` : null },
         { label: 'Added', value: p.added },
         { label: 'Import source', value: p.import_source },
+        { label: 'Extraction model', value: p.extraction_model },
     ];
 
     const fieldsHtml = fields

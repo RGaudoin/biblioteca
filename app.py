@@ -683,12 +683,12 @@ def api_ai_bulk_extract():
             if extracted.get(field) and not paper.get(field):
                 paper[field] = extracted[field]
                 updated = True
-                if field == "summary" and extracted.get("summary_model"):
-                    paper["summary_model"] = extracted["summary_model"]
-        # Backfill: paper has summary but no model recorded
-        if not paper.get("summary_model") and paper.get("summary") and extracted.get("summary_model"):
-            paper["summary_model"] = extracted["summary_model"]
-            updated = True
+
+        # Record models used
+        for model_field in ["summary_model", "extraction_model"]:
+            if extracted.get(model_field) and not paper.get(model_field):
+                paper[model_field] = extracted[model_field]
+                updated = True
 
         if updated:
             save_paper(paper)
@@ -704,25 +704,54 @@ def api_ai_bulk_extract():
     })
 
 
+def extract_metadata_from_url(url, config):
+    """Fetch a URL's content and extract metadata from it."""
+    import tempfile
+    from importers import _fetch_page_metadata, _html_to_markdown
+    from ai import extract_metadata
+
+    page = _fetch_page_metadata(url)
+    if not page.get("html"):
+        return {}
+
+    md = _html_to_markdown(page["html"])
+    if len(md) < 50:
+        return {}
+
+    # Write markdown to a temp file for extract_metadata
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False, encoding="utf-8") as tmp:
+        tmp.write(md)
+        tmp_path = tmp.name
+
+    try:
+        extracted = extract_metadata(tmp_path, config)
+    finally:
+        Path(tmp_path).unlink(missing_ok=True)
+
+    return extracted
+
+
 @app.route("/api/ai/extract/<paper_id>", methods=["POST"])
 def api_ai_extract(paper_id):
     paper = load_paper(paper_id)
     if paper is None:
         return jsonify({"error": "Paper not found"}), 404
 
-    if not paper.get("pdf_filename"):
-        return jsonify({"success": False, "error": "Paper has no file"}), 400
-
-    pdf_path = resolve_file_path(paper)
-    if not pdf_path:
-        return jsonify({"success": False, "error": "File not found on disk"}), 400
-
     config = load_config()
     if not get_api_key(config):
         return jsonify({"success": False, "error": "No API key configured"}), 400
 
+    # Try local file first, then fall back to fetching URL content
+    pdf_path = resolve_file_path(paper) if paper.get("pdf_filename") else None
+
     from ai import extract_metadata
-    extracted = extract_metadata(str(pdf_path), config)
+    if pdf_path:
+        extracted = extract_metadata(str(pdf_path), config)
+    elif paper.get("url"):
+        # No local file — fetch the URL and extract from the page content
+        extracted = extract_metadata_from_url(paper["url"], config)
+    else:
+        return jsonify({"success": False, "error": "Paper has no file or URL to extract from"}), 400
 
     if not extracted:
         return jsonify({"success": False, "error": "Could not extract metadata"}), 400
@@ -733,11 +762,13 @@ def api_ai_extract(paper_id):
         if extracted.get(field) and not paper.get(field):
             paper[field] = extracted[field]
             updated = True
-            if field == "summary" and extracted.get("summary_model"):
-                paper["summary_model"] = extracted["summary_model"]
-    # Backfill: paper has summary but no model recorded
-    if not paper.get("summary_model") and paper.get("summary") and extracted.get("summary_model"):
+
+    # Record models used
+    if extracted.get("summary_model") and not paper.get("summary_model"):
         paper["summary_model"] = extracted["summary_model"]
+        updated = True
+    if extracted.get("extraction_model") and not paper.get("extraction_model"):
+        paper["extraction_model"] = extracted["extraction_model"]
         updated = True
 
     if updated:

@@ -165,6 +165,7 @@ Document text:
                 extracted["tags"] = normalised
             # Merge with PDF metadata (Claude takes priority)
             result = {**pdf_meta, **{k: v for k, v in extracted.items() if v is not None}}
+            result["extraction_model"] = model
             if result.get("summary"):
                 result["summary_model"] = model
             return result

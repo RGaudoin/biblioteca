@@ -121,6 +121,8 @@ def import_local(pdf_path, metadata_overrides=None, use_ai=False):
         "import_source": overrides.get("import_source", "local"),
         "original_filename": overrides.get("original_filename") or pdf_path.name,
         "pdf_hash": compute_hash(str(dest)),
+        "summary_model": ai_metadata.get("summary_model"),
+        "extraction_model": ai_metadata.get("extraction_model"),
     }
 
     metadata = create_paper_stub(paper_id, pdf_filename, **meta_fields)
