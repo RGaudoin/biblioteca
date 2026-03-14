@@ -12,15 +12,17 @@ This isn't limited to academic papers. Current affairs pieces, technical blog po
 
 ## Features
 
-- **Multi-source import** — upload PDFs, paste arXiv IDs or URLs, batch-import from folders, parse email text for links, import reading lists
-- **AI metadata extraction** — automatic title, authors, year, tags, and summary extraction using Claude
-- **AI summarisation** — generate concise summaries on demand, with model attribution
+- **Multi-source import** — upload PDFs, paste arXiv IDs or URLs, batch-import from folders, parse links or email text, import reading lists
+- **Web article import** — fetch web pages, extract metadata from HTML meta tags and JSON-LD, save article content as markdown
+- **AI metadata extraction** — automatic title, authors, year, tags, and summary extraction using Claude, with model attribution
+- **AI re-tag and re-summarise** — regenerate tags or summaries on demand with interactive selection
 - **Topics** — first-class organisational units with descriptions, paper management, and AI-suggested assignments
-- **Tags** — granular labels with AI-suggested merges, bulk rename, and cleanup tools
+- **Tags** — granular labels with AI-suggested merges (deterministic + AI), bulk rename, and cleanup tools
 - **Collections** — curated reading lists with sections and notes
 - **Duplicate detection** — find duplicate papers by hash, arXiv ID, DOI, or title similarity, with merge/cleanup tools
 - **Search** — full-text and metadata search across the whole library
-- **Privacy controls** — flag papers or notes as private (stored separately, never version-controlled)
+- **Privacy controls** — flag papers or notes as private at import time or later (stored separately, never version-controlled)
+- **Security** — SSRF protection on URL imports, path traversal validation, XSS escaping
 - **Web interface** — lightweight single-page Flask app for browsing and managing everything
 
 ## Design Principles
@@ -80,10 +82,11 @@ biblioteca/
 │   └── style.css       # Styles
 └── data/
     ├── papers/         # PDF files (gitignored)
+    ├── documents/      # Versionable text files: .md, .txt, .tex etc. (versioned)
     ├── metadata/       # Per-paper JSON metadata (versioned)
     ├── collections/    # Collection JSON files (versioned)
     ├── topics/         # Topic entity files (versioned)
-    ├── private/        # Private annotations (gitignored)
+    ├── private/        # Private metadata, documents, annotations (gitignored)
     └── config.json     # User settings (gitignored)
 ```
 
