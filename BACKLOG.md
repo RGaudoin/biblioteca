@@ -20,4 +20,5 @@
 - [ ] **Version text content** — git-track versionable text documents alongside metadata; binary files stay gitignored
 - [ ] **Batch import improvements** — better handling of duplicate filenames, scanned PDFs, and non-English documents during import
 - [ ] **CLI parity: full topic and collection management** — CRUD, merge, rename via CLI
+- [ ] **Render-to-PDF for web articles** — optional headless browser (playwright) to render web pages as PDF for full visual fidelity; offer as "Download as PDF" button alongside the default lightweight markdown extraction
 - [ ] **Encrypted private backup** — optional encrypted mirror of private content in `data/private-encrypted/` (git-tracked)
