@@ -458,16 +458,49 @@ def _import_github_ref(url, private=False):
     return {"success": True, "paper_id": paper_id, "metadata": metadata, "note": "Stored as reference (no PDF)."}
 
 
+def _clean_url(url):
+    """Strip tracking parameters (utm_*, gaa_*) from a URL."""
+    from urllib.parse import urlparse, urlencode, parse_qs
+
+    parsed = urlparse(url)
+    params = parse_qs(parsed.query, keep_blank_values=True)
+    cleaned = {k: v for k, v in params.items()
+               if not k.startswith(("utm_", "gaa_"))}
+    new_query = urlencode(cleaned, doseq=True) if cleaned else ""
+    return parsed._replace(query=new_query).geturl()
+
+
+def _fetch_page_title(url):
+    """Fetch a web page and extract its <title> or og:title."""
+    try:
+        resp = requests.get(url, timeout=15, headers={"User-Agent": "Biblioteca/1.0"})
+        resp.raise_for_status()
+        # Try og:title first, then <title>
+        og_match = re.search(r'<meta[^>]+property=["\']og:title["\'][^>]+content=["\']([^"\']+)["\']', resp.text, re.IGNORECASE)
+        if og_match:
+            return og_match.group(1).strip()
+        title_match = re.search(r'<title[^>]*>([^<]+)</title>', resp.text, re.IGNORECASE)
+        if title_match:
+            return title_match.group(1).strip()
+    except Exception:
+        pass
+    return None
+
+
 def _import_generic_url(url, private=False):
-    """Store a generic URL as a reference."""
+    """Store a generic URL as a reference, fetching page title if possible."""
     from urllib.parse import urlparse
-    path_part = urlparse(url).path.rstrip("/").split("/")[-1] or "web-reference"
+
+    clean = _clean_url(url)
+    path_part = urlparse(clean).path.rstrip("/").split("/")[-1] or "web-reference"
+
+    title = _fetch_page_title(clean) or clean
     paper_id = generate_id(fallback=path_part)
     metadata = create_paper_stub(
         paper_id,
         pdf_filename=None,
-        title=url,
-        url=url,
+        title=title,
+        url=clean,
         import_source="url",
         private=private,
     )
