@@ -283,6 +283,30 @@ def import_arxiv(arxiv_input, private=False):
 
 # --- URL import ---
 
+def _is_url_safe(url):
+    """Check that a URL is safe to fetch server-side (anti-SSRF)."""
+    from urllib.parse import urlparse
+    import ipaddress
+    import socket
+
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https"):
+        return False, f"Unsupported scheme: {parsed.scheme}"
+    hostname = parsed.hostname
+    if not hostname:
+        return False, "No hostname in URL"
+    try:
+        addr = ipaddress.ip_address(hostname)
+    except ValueError:
+        try:
+            addr = ipaddress.ip_address(socket.gethostbyname(hostname))
+        except socket.gaierror:
+            return False, f"Cannot resolve hostname: {hostname}"
+    if addr.is_private or addr.is_loopback or addr.is_link_local or addr.is_reserved:
+        return False, "URLs pointing to private/internal addresses are not allowed"
+    return True, None
+
+
 def import_url(url, private=False):
     """Import a paper from a URL. Routes to specific handlers based on URL pattern.
 
@@ -294,6 +318,10 @@ def import_url(url, private=False):
         dict with 'success', 'paper_id', 'metadata', and optionally 'error'.
     """
     url = url.strip()
+
+    safe, reason = _is_url_safe(url)
+    if not safe:
+        return {"success": False, "error": reason}
 
     # Arxiv
     if "arxiv.org" in url:
