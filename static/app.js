@@ -515,7 +515,7 @@ async function handleUrlImport(e) {
         const resp = await fetch('/api/import/url', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ url, private: document.getElementById('import-private').checked })
+            body: JSON.stringify({ url, private: document.getElementById('import-private').checked, ai: document.getElementById('url-ai').checked })
         });
         const data = await resp.json();
         if (data.success) {

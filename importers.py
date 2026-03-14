@@ -311,12 +311,13 @@ def _is_url_safe(url):
     return True, None
 
 
-def import_url(url, private=False):
+def import_url(url, private=False, use_ai=False):
     """Import a paper from a URL. Routes to specific handlers based on URL pattern.
 
     Args:
         url: URL to import from.
         private: If True, mark the paper as private on import.
+        use_ai: If True, run AI metadata extraction after import.
 
     Returns:
         dict with 'success', 'paper_id', 'metadata', and optionally 'error'.
@@ -333,7 +334,7 @@ def import_url(url, private=False):
 
     # Direct PDF link
     if url.lower().endswith(".pdf"):
-        return _import_pdf_url(url, private=private)
+        return _import_pdf_url(url, private=private, use_ai=use_ai)
 
     # DOI
     doi_match = re.search(r"(10\.\d{4,}/[^\s]+)", url)
@@ -345,10 +346,10 @@ def import_url(url, private=False):
         return _import_github_ref(url, private=private)
 
     # Generic URL — try to download as PDF or store as reference
-    return _import_generic_url(url, private=private)
+    return _import_generic_url(url, private=private, use_ai=use_ai)
 
 
-def _import_pdf_url(url, private=False):
+def _import_pdf_url(url, private=False, use_ai=False):
     """Download a PDF from a direct URL and import it."""
     try:
         resp = requests.get(url, timeout=60, headers={"User-Agent": "Biblioteca/1.0"})
@@ -369,7 +370,7 @@ def _import_pdf_url(url, private=False):
         tmp.write(resp.content)
         tmp_path = tmp.name
 
-    result = import_local(tmp_path, metadata_overrides={"url": url, "import_source": "url", "original_filename": filename, "private": private})
+    result = import_local(tmp_path, use_ai=use_ai, metadata_overrides={"url": url, "import_source": "url", "original_filename": filename, "private": private})
 
     # Clean up temp file
     Path(tmp_path).unlink(missing_ok=True)
@@ -544,7 +545,7 @@ def _html_to_markdown(html_text):
     return md
 
 
-def _import_generic_url(url, private=False):
+def _import_generic_url(url, private=False, use_ai=False):
     """Import a web page: extract metadata, save article as markdown."""
     from urllib.parse import urlparse
 
@@ -567,6 +568,7 @@ def _import_generic_url(url, private=False):
 
     # Save article content as markdown if we got HTML
     pdf_filename = None
+    md_path = None
     note = "Stored as reference."
     if page["html"]:
         md_content = _html_to_markdown(page["html"])
@@ -587,13 +589,27 @@ def _import_generic_url(url, private=False):
             pdf_filename = md_filename
             note = "Downloaded article as markdown."
 
+    # Run AI extraction on the saved markdown
+    ai_metadata = {}
+    if use_ai and md_path and md_path.exists():
+        try:
+            from ai import extract_metadata
+            ai_metadata = extract_metadata(str(md_path))
+        except Exception:
+            pass
+
+    # AI results override HTML meta tags where available
     metadata = create_paper_stub(
         paper_id,
         pdf_filename=pdf_filename,
-        title=title,
-        authors=authors,
-        year=year,
-        source=source,
+        title=ai_metadata.get("title") or title,
+        authors=ai_metadata.get("authors") or authors,
+        year=ai_metadata.get("year") or year,
+        source=ai_metadata.get("source") or source,
+        tags=ai_metadata.get("tags", []),
+        summary=ai_metadata.get("summary"),
+        summary_model=ai_metadata.get("summary_model"),
+        extraction_model=ai_metadata.get("extraction_model"),
         url=clean,
         import_source="url",
         private=private,

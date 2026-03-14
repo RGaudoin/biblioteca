@@ -84,6 +84,7 @@
                 <p>Supports arXiv, DOI, direct PDF links, and GitHub repositories.</p>
                 <form onsubmit="return handleUrlImport(event)">
                     <input type="url" id="import-url" placeholder="https://arxiv.org/abs/2402.02160" required>
+                    <label><input type="checkbox" id="url-ai"> Use AI for metadata extraction</label>
                     <button type="submit">Import</button>
                 </form>
                 <div id="url-result" class="result-box"></div>

@@ -400,7 +400,8 @@ def api_import_url():
 
     from importers import import_url
     private = data.get("private", False)
-    result = import_url(url, private=private)
+    use_ai = data.get("ai", False)
+    result = import_url(url, private=private, use_ai=use_ai)
 
     if result["success"]:
         return jsonify({"success": True, "paper_id": result["paper_id"],
