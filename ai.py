@@ -412,6 +412,76 @@ File content:
     return None
 
 
+def find_papers_for_topic(topic_name, topic_description, paper_summaries, config=None):
+    """Find papers that should belong to a topic but don't yet.
+
+    Args:
+        topic_name: Name of the topic.
+        topic_description: Optional description of the topic.
+        paper_summaries: List of dicts with 'id', 'title', 'authors', 'source', 'summary', 'tags'.
+        config: Config dict (loaded if None).
+
+    Returns list of paper IDs that match the topic.
+    """
+    if config is None:
+        config = load_config()
+
+    api_key = get_api_key(config)
+    if not api_key:
+        return []
+
+    if not paper_summaries:
+        return []
+
+    try:
+        import anthropic
+    except ImportError:
+        return []
+
+    model = config.get("extraction_model", "claude-haiku-4-5-20251001")
+
+    papers_str = "\n".join(
+        f"  [{p['id']}] {p.get('title', 'Untitled')}"
+        + (f" by {', '.join(p['authors'])}" if p.get("authors") else "")
+        + (f" ({p['source']})" if p.get("source") else "")
+        + (f" — {p['summary'][:200]}" if p.get("summary") else "")
+        + (f" [tags: {', '.join(p['tags'])}]" if p.get("tags") else "")
+        for p in paper_summaries
+    )
+
+    desc_block = f"\nTopic description: {topic_description}" if topic_description else ""
+
+    prompt = f"""Given the topic "{topic_name}"{desc_block}, which of these papers belong to it?
+
+Papers:
+{papers_str}
+
+Return ONLY a JSON list of paper ID strings for papers that are a good fit for this topic.
+Be selective — only include papers that genuinely belong. If none fit, return an empty list [].
+"""
+
+    try:
+        client = anthropic.Anthropic(api_key=api_key)
+        response = client.messages.create(
+            model=model,
+            max_tokens=1024,
+            messages=[{"role": "user", "content": prompt}],
+        )
+
+        _track_usage(config, response.usage.input_tokens, response.usage.output_tokens, model=model)
+
+        response_text = response.content[0].text
+        json_match = re.search(r"\[[\s\S]*\]", response_text)
+        if json_match:
+            return json.loads(json_match.group())
+
+    except Exception:
+        import traceback
+        traceback.print_exc()
+
+    return []
+
+
 def _find_normalisation_duplicates(tags_with_counts):
     """Find tags that differ only by hyphens/spaces/case — obvious duplicates."""
     def normalise(tag):
@@ -648,6 +718,8 @@ def suggest_unifying_topics(paper_summaries, existing_topics, config=None):
 
     papers_str = "\n".join(
         f"  - {p.get('title', 'Untitled')}"
+        + (f" by {', '.join(p['authors'])}" if p.get("authors") else "")
+        + (f" ({p['source']})" if p.get("source") else "")
         + (f" — {p['summary'][:200]}" if p.get("summary") else "")
         + (f" [tags: {', '.join(p['tags'])}]" if p.get("tags") else "")
         for p in paper_summaries

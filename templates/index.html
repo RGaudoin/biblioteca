@@ -65,7 +65,7 @@
                 <button class="tab-btn" onclick="showTab('import', 'tab-arxiv')">arXiv</button>
                 <button class="tab-btn" onclick="showTab('import', 'tab-batch')">Batch</button>
                 <button class="tab-btn" onclick="showTab('import', 'tab-links')">Links / Email</button>
-                <button class="tab-btn" onclick="showTab('import', 'tab-reading-list')">Reading List</button>
+                <button class="tab-btn" onclick="showTab('import', 'tab-reading-list')">Structured Notes</button>
             </div>
 
             <div id="tab-file" class="tab-content active">
@@ -131,8 +131,8 @@ Or paste email text — URLs will be extracted automatically"></textarea>
             </div>
 
             <div id="tab-reading-list" class="tab-content">
-                <h3>Import Reading List</h3>
-                <p>Parse a reading list or notes file (.md, .txt, .pdf) into a collection using AI.
+                <h3>Import Structured Notes</h3>
+                <p>Parse a reading list, notes file, or structured document (.md, .txt, .pdf) into a collection using AI.
                     References are matched to existing papers; unmatched ones become stubs.</p>
                 <form onsubmit="return handleReadingListImport(event)">
                     <input type="text" id="reading-list-path" placeholder="/home/user/Downloads/reading-list.md" required>
@@ -160,6 +160,7 @@ Or paste email text — URLs will be extracted automatically"></textarea>
                     <button onclick="showCreateTopicForm()">New Topic</button>
                     <button onclick="mergeSelectedTopics()">Merge Selected</button>
                     <button onclick="deleteSelectedTopics()" style="color:var(--error)">Delete Selected</button>
+                    <button onclick="startTopicSuggestion()">Suggest Topics (AI)</button>
                 </div>
                 <div id="topics-list" class="paper-list"></div>
             </div>

@@ -10,9 +10,9 @@
   "source": "37th International Conference on Machine Learning (ICML)",
   "tags": [
     "exploration-exploitation",
-    "neural-networks",
     "multi-armed-bandits",
-    "regret-analysis"
+    "regret-analysis",
+    "neural-networks"
   ],
   "topics": [
     "Upper Confidence Bound (UCB) Algorithms"

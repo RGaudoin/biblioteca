@@ -564,7 +564,7 @@ def api_update_collection(collection_id):
         return jsonify({"error": "Collection not found"}), 404
 
     data = request.json or {}
-    for field in ["title", "description", "sections", "external_links"]:
+    for field in ["title", "description", "sections", "external_links", "source_topic"]:
         if field in data:
             coll[field] = data[field]
 
@@ -858,6 +858,41 @@ def api_suggest_topics(paper_id):
     return jsonify({"success": True, "suggestions": suggestions})
 
 
+@app.route("/api/ai/find-papers-for-topic", methods=["POST"])
+def api_find_papers_for_topic():
+    """Find papers that should belong to a topic based on metadata."""
+    data = request.json or {}
+    topic_name = data.get("topic_name", "").strip()
+    topic_description = data.get("topic_description", "").strip() or None
+    if not topic_name:
+        return jsonify({"success": False, "error": "Topic name is required"}), 400
+
+    config = load_config()
+    if not get_api_key(config):
+        return jsonify({"success": False, "error": "No API key configured"}), 400
+
+    # Get all papers NOT already in this topic
+    all_papers = list_papers()
+    candidates = []
+    for p in all_papers:
+        if not any(t.lower() == topic_name.lower() for t in p.get("topics", [])):
+            candidates.append({
+                "id": p["id"],
+                "title": p.get("title") or p["id"],
+                "authors": p.get("authors", []),
+                "source": p.get("source"),
+                "summary": p.get("summary"),
+                "tags": p.get("tags", []),
+            })
+
+    if not candidates:
+        return jsonify({"success": True, "paper_ids": [], "message": "All papers already in this topic"})
+
+    from ai import find_papers_for_topic
+    paper_ids = find_papers_for_topic(topic_name, topic_description, candidates, config)
+    return jsonify({"success": True, "paper_ids": paper_ids})
+
+
 @app.route("/api/ai/suggest-unifying-topic", methods=["POST"])
 def api_suggest_unifying_topic():
     """Suggest a topic for a group of papers."""
@@ -876,6 +911,8 @@ def api_suggest_unifying_topic():
         if p:
             paper_summaries.append({
                 "title": p.get("title") or pid,
+                "authors": p.get("authors", []),
+                "source": p.get("source"),
                 "summary": p.get("summary"),
                 "tags": p.get("tags", []),
             })

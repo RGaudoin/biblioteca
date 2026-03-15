@@ -12,8 +12,8 @@
     "disentangled-representations",
     "multi-task-learning",
     "world-models",
-    "recurrent-neural-networks",
-    "out-of-distribution-generalization"
+    "out-of-distribution-generalization",
+    "recurrent-neural-networks"
   ],
   "topics": [],
   "summary": "This paper provides theoretical and experimental evidence that agents optimally solving multi-task evidence accumulation classification tasks develop disentangled representations of latent factors in their internal states. The authors prove conditions guaranteeing the emergence of these representations in terms of noise, number of tasks, and evidence accumulation time, and demonstrate through RNN and transformer experiments that such disentangled representations enable zero-shot out-of-distribution generalization.",
