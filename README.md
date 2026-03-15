@@ -16,9 +16,9 @@ This isn't limited to academic papers. Current affairs pieces, technical blog po
 - **Web article import** — fetch web pages, extract metadata from HTML meta tags and JSON-LD, save article content as markdown
 - **AI metadata extraction** — automatic title, authors, year, tags, and summary extraction using Claude, with model attribution
 - **AI re-tag and re-summarise** — regenerate tags or summaries on demand with interactive selection
-- **Topics** — first-class organisational units with descriptions, paper management, and AI-suggested assignments
+- **Topics** — organisational units with AI-suggested assignments from papers, tags, or existing topics; find-papers-for-topic discovery
 - **Tags** — granular labels with AI-suggested merges (deterministic + AI), bulk rename, and cleanup tools
-- **Collections** — curated reading lists with sections and notes
+- **Collections** — curated reading lists with sections and notes; create from topics with refresh support
 - **Duplicate detection** — find duplicate papers by hash, arXiv ID, DOI, or title similarity, with merge/cleanup tools
 - **Search** — full-text and metadata search across the whole library
 - **Privacy controls** — flag papers or notes as private at import time or later (stored separately, never version-controlled)
