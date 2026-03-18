@@ -15,7 +15,10 @@
 
 ## Long-term / Nice to haves
 
-- [ ] **OCR fallback for image PDFs** — integrate an OCR library (e.g. pytesseract, or the Claude vision API) as fallback when PyPDF2 text extraction yields nothing
+- [ ] **Image-to-document import** — import JPGs/photos (slides, handwritten notes) as documents; multiple images concatenated into PDF at import, content extracted via Claude Vision API, saved as markdown in `data/documents/`. Covers: slide photos from talks, handwritten notes with maths, and OCR fallback for scanned PDFs
+- [ ] **Voice notes** — record/transcribe short audio via local Whisper (`faster-whisper`, small model ~500MB, English + German), attach to papers or topics as notes
+- [ ] **Voice to document** — longer voice transcriptions saved as full documents in `data/documents/` (draft blog posts, paper outlines, extended thoughts)
+- [ ] **Voice-to-topic suggestion** — feed voice transcriptions into topic suggestion to organise spoken ideas into the topic/collection structure
 - [ ] **Paper finder** — given partial information (title, topic), search for and fetch PDFs from arXiv or other open-access sources
 - [ ] **Paper linking** — link related papers (multi-part series, continuations, patent families) with navigation between them
 - [ ] **Version text content** — git-track versionable text documents alongside metadata; binary files stay gitignored
