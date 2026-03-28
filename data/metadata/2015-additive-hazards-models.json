@@ -5,10 +5,8 @@
   "year": 2015,
   "source": "Chapter 9 - Academic Textbook/Course Material",
   "tags": [
-    "additive hazard models",
-    "aalen model",
     "time-varying covariates",
-    "cox-regression",
+    "additive-hazard-models",
     "survival-analysis"
   ],
   "topics": [],

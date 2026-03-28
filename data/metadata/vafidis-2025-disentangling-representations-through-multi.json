@@ -1,0 +1,32 @@
+{
+  "id": "vafidis-2025-disentangling-representations-through-multi",
+  "title": "Disentangling Representations Through Multi-Task Learning",
+  "authors": [
+    "Pantelis Vafidis",
+    "Aman Bhargava",
+    "Antonio Rangel"
+  ],
+  "year": 2025,
+  "source": "ICLR 2025",
+  "tags": [
+    "disentangled-representations",
+    "multi-task-learning",
+    "world-models",
+    "out-of-distribution-generalization",
+    "recurrent-neural-networks"
+  ],
+  "topics": [],
+  "summary": "This paper provides theoretical and experimental evidence that agents optimally solving multi-task evidence accumulation classification tasks develop disentangled representations of latent factors in their internal states. The authors prove conditions guaranteeing the emergence of these representations in terms of noise, number of tasks, and evidence accumulation time, and demonstrate through RNN and transformer experiments that such disentangled representations enable zero-shot out-of-distribution generalization.",
+  "notes": null,
+  "private": false,
+  "added": "2026-03-14",
+  "pdf_filename": "vafidis-2025-disentangling-representations-through-multi.pdf",
+  "url": null,
+  "arxiv_id": null,
+  "doi": null,
+  "import_source": "local",
+  "original_filename": "2407.11249v3.pdf",
+  "pdf_hash": "384ccfa793ec4232945b9d410782338caf4e6b673ab93ed9cd7a0dffbacac215",
+  "content_type": "pdf",
+  "versionable": false
+}

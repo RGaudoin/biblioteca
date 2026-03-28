@@ -64,9 +64,8 @@
                 <button class="tab-btn" onclick="showTab('import', 'tab-url')">URL</button>
                 <button class="tab-btn" onclick="showTab('import', 'tab-arxiv')">arXiv</button>
                 <button class="tab-btn" onclick="showTab('import', 'tab-batch')">Batch</button>
-                <button class="tab-btn" onclick="showTab('import', 'tab-links')">Links File</button>
-                <button class="tab-btn" onclick="showTab('import', 'tab-reading-list')">Reading List</button>
-                <button class="tab-btn" onclick="showTab('import', 'tab-emails')">Emails</button>
+                <button class="tab-btn" onclick="showTab('import', 'tab-links')">Links / Email</button>
+                <button class="tab-btn" onclick="showTab('import', 'tab-reading-list')">Structured Notes</button>
             </div>
 
             <div id="tab-file" class="tab-content active">
@@ -84,6 +83,7 @@
                 <p>Supports arXiv, DOI, direct PDF links, and GitHub repositories.</p>
                 <form onsubmit="return handleUrlImport(event)">
                     <input type="url" id="import-url" placeholder="https://arxiv.org/abs/2402.02160" required>
+                    <label><input type="checkbox" id="url-ai"> Use AI for metadata extraction</label>
                     <button type="submit">Import</button>
                 </form>
                 <div id="url-result" class="result-box"></div>
@@ -91,7 +91,7 @@
 
             <div id="tab-arxiv" class="tab-content">
                 <h3>Import from arXiv</h3>
-                <p>Enter an arXiv ID (e.g. 2402.02160) or full URL.</p>
+                <p>Enter an arXiv ID (e.g. 2402.02160) or full URL. Metadata comes from the arXiv API (abstract + category tag only) — use Re-tag and Re-summarise afterwards for richer results.</p>
                 <form onsubmit="return handleArxivImport(event)">
                     <input type="text" id="arxiv-id" placeholder="2402.02160" required>
                     <button type="submit">Import</button>
@@ -116,21 +116,23 @@
             </div>
 
             <div id="tab-links" class="tab-content">
-                <h3>Import from Links File</h3>
-                <p>Paste URLs or arXiv IDs, one per line. Lines starting with # are comments.</p>
+                <h3>Import from Links or Email</h3>
+                <p>Paste URLs, arXiv IDs, or email text. URLs are extracted automatically; lines starting with # are comments.</p>
                 <form onsubmit="return handleLinksImport(event)">
                     <textarea id="links-text" rows="10" placeholder="2402.02160
 https://arxiv.org/abs/2301.01234
 https://example.com/paper.pdf
-# This is a comment"></textarea>
-                    <button type="submit">Import Links</button>
+# This is a comment
+Or paste email text — URLs will be extracted automatically"></textarea>
+                    <label><input type="checkbox" id="links-ai"> Use AI for metadata extraction</label>
+                    <button type="submit">Import</button>
                 </form>
                 <div id="links-result" class="result-box"></div>
             </div>
 
             <div id="tab-reading-list" class="tab-content">
-                <h3>Import Reading List</h3>
-                <p>Parse a reading list or notes file (.md, .txt, .pdf) into a collection using AI.
+                <h3>Import Structured Notes</h3>
+                <p>Parse a reading list, notes file, or structured document (.md, .txt, .pdf) into a collection using AI.
                     References are matched to existing papers; unmatched ones become stubs.</p>
                 <form onsubmit="return handleReadingListImport(event)">
                     <input type="text" id="reading-list-path" placeholder="/home/user/Downloads/reading-list.md" required>
@@ -139,15 +141,6 @@ https://example.com/paper.pdf
                 <div id="reading-list-result" class="result-box"></div>
             </div>
 
-            <div id="tab-emails" class="tab-content">
-                <h3>Import from Emails</h3>
-                <p>Paste email text containing URLs. Each URL will be imported separately.</p>
-                <form onsubmit="return handleEmailImport(event)">
-                    <textarea id="email-text" rows="10" placeholder="Paste email text here..."></textarea>
-                    <button type="submit">Parse &amp; Import</button>
-                </form>
-                <div id="email-result" class="result-box"></div>
-            </div>
         </section>
 
         <!-- Collections Section -->
@@ -167,6 +160,7 @@ https://example.com/paper.pdf
                     <button onclick="showCreateTopicForm()">New Topic</button>
                     <button onclick="mergeSelectedTopics()">Merge Selected</button>
                     <button onclick="deleteSelectedTopics()" style="color:var(--error)">Delete Selected</button>
+                    <button onclick="startTopicSuggestion()">Suggest Topics (AI)</button>
                 </div>
                 <div id="topics-list" class="paper-list"></div>
             </div>

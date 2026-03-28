@@ -8,9 +8,9 @@
   "source": null,
   "tags": [
     "game playing",
-    "neural-networks",
     "reinforcement-learning",
-    "monte carlo tree search"
+    "monte carlo tree search",
+    "neural-networks"
   ],
   "topics": [
     "AlphaZero and Reinforcement Learning"

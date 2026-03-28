@@ -23,7 +23,8 @@ biblioteca/
 │   ├── metadata/          # Per-paper JSON metadata (versioned)
 │   ├── collections/       # Collection JSON files (versioned)
 │   ├── topics/            # Topic entity files (versioned)
-│   ├── private/           # Private annotations/metadata (gitignored)
+│   ├── documents/         # Versionable text files: .md, .txt, .tex etc. (versioned)
+│   ├── private/           # Private metadata, documents, annotations (gitignored)
 │   └── config.json        # User settings incl. API key (gitignored)
 ├── requirements.txt
 ├── README.md
@@ -70,7 +71,12 @@ Each paper gets a JSON file in `data/metadata/` named by ID slug:
   "arxiv_id": "2402.02160",
   "doi": "10.1162/neco.2006.18.7.1527",
   "import_source": "arxiv",
-  "original_filename": "hinton_2006.pdf"
+  "original_filename": "hinton_2006.pdf",
+  "pdf_hash": "sha256-...",
+  "content_type": "pdf",
+  "versionable": false,
+  "summary_model": "claude-sonnet-4-20250514",
+  "extraction_model": "claude-haiku-4-5-20251001"
 }
 ```
 

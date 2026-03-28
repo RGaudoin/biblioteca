@@ -10,8 +10,8 @@
     "tensorflow probability",
     "heteroscedastic regression",
     "bayesian-deep-learning",
-    "neural-networks",
-    "uncertainty-quantification"
+    "uncertainty-quantification",
+    "neural-networks"
   ],
   "topics": [],
   "summary": "This tutorial demonstrates how to build a fully probabilistic neural network model using TensorFlow Probability that captures both aleatoric and epistemic uncertainty. The author applies variational layers and distribution layers to model a challenging non-linear, heteroscedastic dataset, combining knowledge from previous parts of the series into a comprehensive probabilistic approach.",

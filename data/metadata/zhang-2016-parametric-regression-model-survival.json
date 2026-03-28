@@ -10,8 +10,8 @@
     "parametric models",
     "statistical methods",
     "R software",
-    "survival-analysis",
-    "weibull"
+    "weibull",
+    "survival-analysis"
   ],
   "topics": [],
   "summary": "This article introduces Weibull regression models, a parametric approach to survival analysis that estimates baseline hazard functions and covariate coefficients while providing clinically meaningful statistics such as hazard ratios (HR) and event time ratios (ETR). The paper illustrates practical implementation using R software packages (SurvRegCensCov and eha) with examples, including model adequacy assessment through Kaplan-Meier curves and goodness-of-fit tests. Model development strategies including variable selection and visualization techniques are presented to make Weibull regression more accessible to clinical investigators.",
